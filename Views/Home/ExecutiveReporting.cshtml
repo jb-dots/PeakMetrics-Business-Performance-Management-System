@@ -1,0 +1,160 @@
+@{
+    var logoFallbackScript = "this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');";
+    var kpis = new[]
+    {
+        new { Name = "Revenue Growth Rate", Target = "15%", Actual = "17.2%", Status = "On Track", Variance = "+2.2%" },
+        new { Name = "Customer Satisfaction Score", Target = "4.5/5", Actual = "4.7/5", Status = "On Track", Variance = "+0.2" },
+        new { Name = "Market Share", Target = "25%", Actual = "26.8%", Status = "On Track", Variance = "+1.8%" },
+        new { Name = "Process Cycle Time", Target = "3 days", Actual = "5 days", Status = "Behind", Variance = "+2 days" },
+        new { Name = "Employee Turnover Rate", Target = "< 10%", Actual = "12.5%", Status = "At Risk", Variance = "+2.5%" }
+    };
+
+    var scorecards = new[]
+    {
+        new { Perspective = "Financial", Score = 90, Trend = "+5%" },
+        new { Perspective = "Customer", Score = 89, Trend = "+4%" },
+        new { Perspective = "Internal Process", Score = 84, Trend = "+2%" },
+        new { Perspective = "Learning & Growth", Score = 81, Trend = "+3%" }
+    };
+
+    var goals = new[]
+    {
+        new { Name = "Digital Transformation Initiative", Progress = 65, Status = "On Track" },
+        new { Name = "Market Expansion Strategy", Progress = 78, Status = "On Track" },
+        new { Name = "Customer Experience Excellence", Progress = 55, Status = "At Risk" }
+    };
+}
+
+<div class="card card-clean mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold">Reporting Period</label>
+                <select class="form-select">
+                    <option>Q1 2026</option>
+                    <option>Q2 2026</option>
+                    <option>Q3 2026</option>
+                    <option>Q4 2026</option>
+                    <option>Year 2025</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold">Include Sections</label>
+                <div class="d-flex gap-3 flex-wrap">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeScorecard" checked />
+                        <label class="form-check-label" for="includeScorecard">Scorecard</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeKPIs" checked />
+                        <label class="form-check-label" for="includeKPIs">KPIs</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeGoals" checked />
+                        <label class="form-check-label" for="includeGoals">Goals</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <button class="btn btn-primary-custom w-100" id="generateExecutiveReport">
+                    <i class="bi bi-printer me-2"></i>
+                    Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-clean" id="report-preview">
+    <div class="card-body p-4 p-lg-5">
+        <div class="text-center border-bottom pb-4 mb-4">
+            <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="report-logo-image mb-2" onerror="@logoFallbackScript" />
+            <h2 class="brand-title mb-2 d-none">PeakMetrics</h2>
+            <h4 class="fw-semibold mb-1">Executive Performance Report</h4>
+            <p class="text-muted mb-0">Period: Q1 2026</p>
+        </div>
+
+        <div class="mb-4">
+            <h5 class="fw-semibold mb-3">Performance Summary</h5>
+            <div class="row g-3">
+                <div class="col-6 col-md-3"><div class="p-3 rounded bg-light text-center"><div class="small text-muted">Overall Score</div><div class="fs-3 fw-bold text-primary">85</div><div class="small text-primary fw-semibold">+3.2%</div></div></div>
+                <div class="col-6 col-md-3"><div class="p-3 rounded bg-light text-center"><div class="small text-muted">Total KPIs</div><div class="fs-3 fw-bold">48</div></div></div>
+                <div class="col-6 col-md-2"><div class="p-3 rounded text-center" style="background:#eff6ff;"><div class="small" style="color:#1e40af;">On Track</div><div class="fs-3 fw-bold" style="color:#1B4FD8;">32</div></div></div>
+                <div class="col-6 col-md-2"><div class="p-3 rounded text-center" style="background:#dbeafe;"><div class="small" style="color:#1e3a8a;">At Risk</div><div class="fs-3 fw-bold" style="color:#3b82f6;">12</div></div></div>
+                <div class="col-6 col-md-2"><div class="p-3 rounded text-center" style="background:#f1f5f9;"><div class="small" style="color:#475569;">Behind</div><div class="fs-3 fw-bold" style="color:#60a5fa;">4</div></div></div>
+            </div>
+        </div>
+
+        <div class="mb-4" id="execSectionKPIs">
+            <h5 class="fw-semibold mb-3">Key Performance Indicators</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>KPI Name</th>
+                            <th>Target</th>
+                            <th>Actual</th>
+                            <th>Variance</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var kpi in kpis)
+                        {
+                            var statusClass = kpi.Status == "On Track"
+                                ? "status-badge status-ontrack"
+                                : kpi.Status == "At Risk"
+                                    ? "status-badge status-atrisk"
+                                    : "status-badge status-behind";
+                            <tr>
+                                <td>@kpi.Name</td>
+                                <td>@kpi.Target</td>
+                                <td class="fw-semibold">@kpi.Actual</td>
+                                <td>@kpi.Variance</td>
+                                <td><span class="@statusClass">@kpi.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mb-4" id="execSectionScorecard">
+            <h5 class="fw-semibold mb-3">Balanced Scorecard Summary</h5>
+            <div class="row g-3">
+                @foreach (var item in scorecards)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 rounded bg-light">
+                            <div class="small text-muted mb-2">@item.Perspective</div>
+                            <div class="fs-4 fw-bold mb-1">@item.Score</div>
+                            <div class="small fw-semibold text-primary">@item.Trend</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div id="execSectionGoals">
+            <h5 class="fw-semibold mb-3">Strategic Goals Progress</h5>
+            <div class="d-flex flex-column gap-3">
+                @foreach (var goal in goals)
+                {
+                    var statusClass = goal.Status == "On Track" ? "status-badge status-ontrack" : "status-badge status-atrisk";
+                    <div class="p-3 rounded bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold">@goal.Name</span>
+                            <span class="@statusClass">@goal.Status</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="progress flex-grow-1" style="height:8px;">
+                                <div class="progress-bar" style="width:@(goal.Progress)%;background:#1B4FD8;"></div>
+                            </div>
+                            <span class="small fw-semibold">@goal.Progress%</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

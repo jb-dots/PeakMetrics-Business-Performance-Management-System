@@ -1,0 +1,124 @@
+@{
+    var entries = new[]
+    {
+        new { Timestamp = "2026-04-07 14:32:15", User = "Sarah Johnson", Action = "Updated", Entity = "KPI", Details = "Modified Customer Satisfaction Score target value from 4.3 to 4.5" },
+        new { Timestamp = "2026-04-07 13:18:42", User = "Michael Chen", Action = "Created", Entity = "KPI Log Entry", Details = "Logged entry for Revenue Growth Rate - Q1 2026" },
+        new { Timestamp = "2026-04-07 11:45:20", User = "Emily Davis", Action = "Deleted", Entity = "Goal", Details = "Removed outdated goal: Legacy System Migration" },
+        new { Timestamp = "2026-04-07 10:22:08", User = "David Wilson", Action = "Generated", Entity = "Report", Details = "Generated Executive Report for Q1 2026" },
+        new { Timestamp = "2026-04-07 09:15:33", User = "Lisa Anderson", Action = "Updated", Entity = "Department", Details = "Modified HR department description and added 2 new users" },
+        new { Timestamp = "2026-04-06 16:50:11", User = "Robert Taylor", Action = "Created", Entity = "KPI", Details = "Added new KPI: Digital Adoption Rate" },
+        new { Timestamp = "2026-04-06 15:28:45", User = "Jennifer White", Action = "Updated", Entity = "Scorecard", Details = "Modified Financial perspective weightage from 30% to 35%" },
+        new { Timestamp = "2026-04-06 14:12:22", User = "James Martinez", Action = "Accessed", Entity = "Report", Details = "Viewed Executive Report for Q4 2025" }
+    };
+}
+
+<div class="alert" style="background:#fef3c7;border:1px solid #fbbf24;">
+    <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-shield-lock fs-5" style="color:#92400e;"></i>
+        <div>
+            <strong style="color:#92400e;">Super Admin Access Required</strong>
+            <p class="mb-0 small" style="color:#92400e;">This page contains sensitive audit information and is restricted to Super Administrator accounts only.</p>
+        </div>
+    </div>
+</div>
+
+<div class="card card-clean mb-4">
+    <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-funnel text-muted"></i>
+            <h6 class="mb-0 fw-semibold">Filters</h6>
+        </div>
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold">Action Type</label>
+                <select class="form-select" id="auditActionFilter">
+                    <option>All</option>
+                    <option>Created</option>
+                    <option>Updated</option>
+                    <option>Deleted</option>
+                    <option>Generated</option>
+                    <option>Accessed</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold">Entity Type</label>
+                <select class="form-select" id="auditEntityFilter">
+                    <option>All</option>
+                    <option>KPI</option>
+                    <option>KPI Log Entry</option>
+                    <option>Department</option>
+                    <option>Goal</option>
+                    <option>Report</option>
+                    <option>Scorecard</option>
+                    <option>User</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold">Date Range</label>
+                <select class="form-select">
+                    <option>Last 7 Days</option>
+                    <option>Last 30 Days</option>
+                    <option>Last 90 Days</option>
+                    <option>Custom Range</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-clean">
+    <div class="card-body">
+        <div class="table-responsive table-scrollable">
+            <table class="table table-hover mb-0" id="auditTable" style="font-size:0.875rem;">
+                <thead>
+                    <tr>
+                        <th class="table-sortable" data-sort-type="date">Timestamp</th>
+                        <th class="table-sortable" data-sort-type="text">User</th>
+                        <th class="table-sortable" data-sort-type="text">Action</th>
+                        <th class="table-sortable" data-sort-type="text">Entity Type</th>
+                        <th class="table-sortable" data-sort-type="text">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in entries)
+                    {
+                        var initials = string.Concat(entry.User.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(p => p[0]));
+                        string actionClass = entry.Action == "Created"
+                            ? "status-badge status-ontrack"
+                            : entry.Action == "Deleted"
+                                ? "status-badge status-behind"
+                                : "status-badge status-atrisk";
+                        <tr data-action="@entry.Action" data-entity="@entry.Entity">
+                            <td class="text-muted" style="font-family:monospace;white-space:nowrap;">@entry.Timestamp</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-semibold" style="width:28px;height:28px;background:#1B4FD8;font-size:0.7rem;">@initials</div>
+                                    <span>@entry.User</span>
+                                </div>
+                            </td>
+                            <td><span class="@actionClass">@entry.Action</span></td>
+                            <td><span class="badge text-dark" style="background:#f3f4f6;">@entry.Entity</span></td>
+                            <td class="text-muted">@entry.Details</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="table-footer-meta">
+            <div class="table-footer-tools">
+                <label for="auditPageSize" class="small text-muted mb-0">Rows</label>
+                <select class="form-select form-select-sm table-page-size-select" id="auditPageSize" aria-label="Rows per page for audit table">
+                    <option value="5" selected>5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                </select>
+                <div class="btn-group btn-group-sm table-density-toggle" id="auditDensityToggle" role="group" aria-label="Audit table density">
+                    <button type="button" class="btn btn-outline-secondary active" data-density="comfortable">Comfortable</button>
+                    <button type="button" class="btn btn-outline-secondary" data-density="compact">Compact</button>
+                </div>
+            </div>
+            <small class="text-muted" id="auditTableSummary"></small>
+            <div class="table-pagination" id="auditTablePagination"></div>
+        </div>
+    </div>
+</div>

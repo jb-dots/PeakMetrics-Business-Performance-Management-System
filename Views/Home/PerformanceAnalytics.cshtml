@@ -1,0 +1,60 @@
+<div class="card card-clean mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold small">Time Range</label>
+                <select class="form-select">
+                    <option>Last 3 Months</option>
+                    <option selected>Last 6 Months</option>
+                    <option>Last Year</option>
+                    <option>Year to Date</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold small">Department</label>
+                <select class="form-select">
+                    <option selected>All</option>
+                    <option>Finance</option>
+                    <option>Sales</option>
+                    <option>HR</option>
+                    <option>Operations</option>
+                    <option>Customer Service</option>
+                    <option>Quality</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <button class="btn btn-primary-custom w-100">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-clean mb-4">
+    <div class="card-body p-4">
+        <div class="canvas-wrap-lg">
+            <canvas id="performanceLineChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-7">
+        <div class="card card-clean">
+            <div class="card-body p-4">
+                <div class="canvas-wrap">
+                    <canvas id="performanceBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="card card-clean">
+            <div class="card-body p-4">
+                <div class="canvas-wrap">
+                    <canvas id="performanceDoughnutChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

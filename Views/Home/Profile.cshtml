@@ -1,0 +1,94 @@
+@{
+    var recentHighlights = new[]
+    {
+        new { Label = "KPIs Managed", Value = "48" },
+        new { Label = "Reports Generated", Value = "12" },
+        new { Label = "Audit Actions", Value = "87" },
+        new { Label = "Teams Covered", Value = "6" }
+    };
+
+    var responsibilities = new[]
+    {
+        "Review at-risk KPIs every morning",
+        "Approve strategic initiatives and deadlines",
+        "Generate monthly executive performance reports",
+        "Coordinate with department heads on corrective actions"
+    };
+}
+
+<div class="row g-4">
+    <div class="col-12 col-xl-4">
+        <div class="card card-clean profile-card h-100">
+            <div class="profile-header p-4 text-white">
+                <div class="profile-avatar mb-3">JD</div>
+                <h5 class="mb-1 fw-semibold">John Dutaro</h5>
+                <p class="mb-0 opacity-75">PeakMetrics System Owner</p>
+            </div>
+            <div class="card-body p-4">
+                <div class="profile-info-row">
+                    <span class="text-muted">Email</span>
+                    <span class="fw-semibold">john.dutaro@peakmetrics.com</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="text-muted">Department</span>
+                    <span class="fw-semibold">Business Intelligence</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="text-muted">Role</span>
+                    <span class="fw-semibold">Administrator</span>
+                </div>
+                <div class="profile-info-row">
+                    <span class="text-muted">Timezone</span>
+                    <span class="fw-semibold">GMT+8</span>
+                </div>
+                <div class="profile-info-row mb-0 pb-0 border-0">
+                    <span class="text-muted">Last login</span>
+                    <span class="fw-semibold">Today, 08:12 AM</span>
+                </div>
+
+                <a asp-controller="Home" asp-action="Notifications" class="btn btn-primary-custom w-100 mt-4">
+                    View Notifications
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+        <div class="card card-clean mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="mb-0 fw-semibold">Access Scope</h5>
+                    <span class="badge text-bg-light border">Full Platform Access</span>
+                </div>
+                <p class="text-muted mb-4">
+                    You can manage KPI definitions, approve strategic goals, audit activity logs, and publish executive reports across all departments.
+                </p>
+
+                <h6 class="fw-semibold mb-3">Current Responsibilities</h6>
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var item in responsibilities)
+                    {
+                        <div class="profile-list-item">
+                            <i class="bi bi-check2-circle text-primary"></i>
+                            <span>@item</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            @foreach (var item in recentHighlights)
+            {
+                <div class="col-12 col-sm-6">
+                    <div class="card card-clean h-100">
+                        <div class="card-body p-4">
+                            <p class="text-muted mb-1">@item.Label</p>
+                            <h3 class="mb-0 fw-bold">@item.Value</h3>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

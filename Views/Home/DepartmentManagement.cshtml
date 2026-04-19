@@ -1,0 +1,67 @@
+@{
+    var departments = new[]
+    {
+        new { Name = "Finance", Description = "Financial planning, accounting, and reporting", Users = 12, Kpis = 8, DateCreated = "Jan 15, 2024" },
+        new { Name = "Sales", Description = "Sales operations, customer acquisition, and revenue generation", Users = 25, Kpis = 10, DateCreated = "Jan 15, 2024" },
+        new { Name = "Human Resources", Description = "Talent management, recruitment, and employee development", Users = 8, Kpis = 6, DateCreated = "Jan 20, 2024" },
+        new { Name = "Operations", Description = "Process management, supply chain, and logistics", Users = 18, Kpis = 9, DateCreated = "Feb 01, 2024" },
+        new { Name = "Customer Service", Description = "Customer support, satisfaction, and relationship management", Users = 15, Kpis = 7, DateCreated = "Feb 10, 2024" },
+        new { Name = "Quality Assurance", Description = "Quality control, testing, and continuous improvement", Users = 10, Kpis = 5, DateCreated = "Mar 05, 2024" },
+        new { Name = "Marketing", Description = "Brand management, campaigns, and market research", Users = 14, Kpis = 8, DateCreated = "Mar 12, 2024" },
+        new { Name = "IT & Technology", Description = "Infrastructure, software development, and technical support", Users = 20, Kpis = 6, DateCreated = "Mar 20, 2024" }
+    };
+}
+
+<div class="card card-clean mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-8">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute" style="left:12px;top:50%;transform:translateY(-50%);color:#6b7280;"></i>
+                    <input type="text" class="form-control ps-5" id="departmentSearch" placeholder="Search departments..." />
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <button class="btn btn-primary-custom w-100"><i class="bi bi-plus-lg me-2"></i>Add Department</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-clean">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="departmentTable">
+                <thead>
+                    <tr>
+                        <th>Department Name</th>
+                        <th>Description</th>
+                        <th class="text-center">Users</th>
+                        <th class="text-center">KPIs</th>
+                        <th>Date Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var dept in departments)
+                    {
+                        <tr data-search="@($"{dept.Name} {dept.Description}")">
+                            <td class="fw-semibold">@dept.Name</td>
+                            <td class="text-muted">@dept.Description</td>
+                            <td class="text-center"><span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width:32px;height:32px;background:#eff6ff;color:#1B4FD8;">@dept.Users</span></td>
+                            <td class="text-center"><span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width:32px;height:32px;background:#eff6ff;color:#1B4FD8;font-size:0.875rem;">@dept.Kpis</span></td>
+                            <td class="text-muted">@dept.DateCreated</td>
+                            <td>
+                                <button class="btn btn-sm text-primary">Edit</button>
+                                <button class="btn btn-sm text-muted">View</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div id="noDepartmentResults" class="text-center text-muted py-5" style="display:none;">
+            No departments found matching your search.
+        </div>
+    </div>
+</div>

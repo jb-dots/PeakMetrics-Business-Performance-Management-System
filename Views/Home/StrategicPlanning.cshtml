@@ -1,0 +1,88 @@
+@{
+    var goals = new[]
+    {
+        new {
+            Title = "Digital Transformation Initiative",
+            Description = "Modernize core business systems and implement cloud-based solutions to improve operational efficiency and data accessibility.",
+            TargetYear = "2027",
+            Status = "On Track",
+            Progress = 65,
+            LinkedKpis = new[] { "Process Cycle Time", "Innovation Index", "Process Efficiency" }
+        },
+        new {
+            Title = "Market Expansion Strategy",
+            Description = "Enter three new geographical markets and increase overall market share by 10% through targeted marketing and strategic partnerships.",
+            TargetYear = "2026",
+            Status = "On Track",
+            Progress = 78,
+            LinkedKpis = new[] { "Market Share", "Revenue Growth Rate", "Customer Acquisition" }
+        },
+        new {
+            Title = "Customer Experience Excellence",
+            Description = "Achieve industry-leading customer satisfaction scores through enhanced service delivery, personalized engagement, and faster response times.",
+            TargetYear = "2026",
+            Status = "At Risk",
+            Progress = 55,
+            LinkedKpis = new[] { "Customer Satisfaction Score", "Customer Retention Rate", "Net Promoter Score" }
+        },
+        new {
+            Title = "Operational Excellence Program",
+            Description = "Reduce operational costs by 15% while improving quality and delivery times through lean methodologies and process optimization.",
+            TargetYear = "2027",
+            Status = "Behind",
+            Progress = 35,
+            LinkedKpis = new[] { "Defect Rate", "On-time Delivery", "Process Cycle Time" }
+        }
+    };
+}
+
+<div class="row g-4">
+    @foreach (var goal in goals)
+    {
+        var statusClass = goal.Status == "On Track"
+            ? "status-badge status-ontrack"
+            : goal.Status == "At Risk"
+                ? "status-badge status-atrisk"
+                : "status-badge status-behind";
+
+        var progressColor = goal.Progress >= 70 ? "#1B4FD8" : goal.Progress >= 40 ? "#60a5fa" : "#93c5fd";
+
+        <div class="col-12 col-lg-6">
+            <div class="card card-clean h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                        <div>
+                            <h5 class="mb-2 fw-semibold">@goal.Title</h5>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small text-muted"><i class="bi bi-bullseye"></i> Target: @goal.TargetYear</span>
+                                <span class="@statusClass">@goal.Status</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-muted" style="font-size:0.9rem;">@goal.Description</p>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-semibold">Progress</span>
+                            <span class="small fw-bold" style="color:@progressColor;">@goal.Progress%</span>
+                        </div>
+                        <div class="progress" style="height:8px;">
+                            <div class="progress-bar" role="progressbar" style="width:@(goal.Progress)%;background:@progressColor;" aria-valuenow="@goal.Progress" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="small fw-semibold mb-2"><i class="bi bi-graph-up"></i> Linked KPIs</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var kpi in goal.LinkedKpis)
+                            {
+                                <span class="badge rounded-pill" style="background:#eff6ff;color:#1B4FD8;">@kpi</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# IDE folders
+.vs/
+.vscode/
+.sixth/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

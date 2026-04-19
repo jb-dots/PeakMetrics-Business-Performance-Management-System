@@ -1,0 +1,77 @@
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="mb-3">
+            <a asp-controller="Home" asp-action="KPITracking" class="text-muted text-decoration-none d-inline-flex align-items-center gap-2">
+                <i class="bi bi-arrow-left"></i>
+                Back to KPI Tracking
+            </a>
+        </div>
+
+        <div class="card card-clean">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-4">Log KPI Entry</h5>
+
+                <form id="kpiLogEntryForm">
+                    <div class="mb-4">
+                        <label for="kpiName" class="form-label fw-semibold">KPI Name</label>
+                        <select class="form-select" id="kpiName" name="kpiName" required>
+                            <option value="">Select a KPI</option>
+                            <option value="Revenue Growth Rate">Revenue Growth Rate</option>
+                            <option value="Customer Satisfaction Score">Customer Satisfaction Score</option>
+                            <option value="Employee Turnover Rate">Employee Turnover Rate</option>
+                            <option value="Net Profit Margin">Net Profit Margin</option>
+                            <option value="Process Cycle Time">Process Cycle Time</option>
+                            <option value="Market Share">Market Share</option>
+                            <option value="Training Hours per Employee">Training Hours per Employee</option>
+                            <option value="Defect Rate">Defect Rate</option>
+                            <option value="Customer Retention Rate">Customer Retention Rate</option>
+                            <option value="Operating Cash Flow">Operating Cash Flow</option>
+                        </select>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12 col-md-6">
+                            <label for="targetValue" class="form-label fw-semibold">Target Value</label>
+                            <input type="text" class="form-control" id="targetValue" name="targetValue" placeholder="e.g., 15%, $2M, 4.5/5" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="actualValue" class="form-label fw-semibold">Actual Value</label>
+                            <input type="text" class="form-control" id="actualValue" name="actualValue" placeholder="e.g., 17.2%, $2.3M, 4.7/5" required />
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12 col-md-6">
+                            <label for="period" class="form-label fw-semibold">Period</label>
+                            <select class="form-select" id="period" name="period" required>
+                                <option value="Q1 2026">Q1 2026</option>
+                                <option value="Q2 2026">Q2 2026</option>
+                                <option value="Q3 2026">Q3 2026</option>
+                                <option value="Q4 2026">Q4 2026</option>
+                                <option value="Q4 2025">Q4 2025</option>
+                                <option value="Q3 2025">Q3 2025</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="dateLogged" class="form-label fw-semibold">Date Logged</label>
+                            <input type="date" class="form-control" id="dateLogged" name="dateLogged" value="2026-04-07" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="notes" class="form-label fw-semibold">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Add any additional context or observations..."></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary" id="resetKpiLogForm">Cancel</button>
+                        <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-floppy"></i>
+                            Save Entry
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

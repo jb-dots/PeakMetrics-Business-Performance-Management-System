@@ -1,70 +1,143 @@
+@model PeakMetrics.Web.ViewModels.KpiLogEntryViewModel
+@using PeakMetrics.Web.ViewModels
+@{
+    var kpis = (ViewBag.Kpis as List<KpiDetailDto>) ?? new List<KpiDetailDto>();
+
+    // Generate period options: current quarter + last 5 quarters
+    var periods = new List<string>();
+    var now = DateTime.Today;
+    var year = now.Year;
+    var quarter = (now.Month - 1) / 3 + 1;
+    for (int i = 0; i < 6; i++)
+    {
+        periods.Add($"Q{quarter} {year}");
+        quarter--;
+        if (quarter == 0) { quarter = 4; year--; }
+    }
+}
+
 <div class="row justify-content-center">
-    <div class="col-12 col-lg-8">
-        <div class="mb-3">
-            <a asp-controller="Home" asp-action="KPITracking" class="text-muted text-decoration-none d-inline-flex align-items-center gap-2">
-                <i class="bi bi-arrow-left"></i>
-                Back to KPI Tracking
-            </a>
-        </div>
+    <div class="col-12 col-lg-7">
 
         <div class="card card-clean">
             <div class="card-body p-4">
-                <h5 class="card-title mb-4">Log KPI Entry</h5>
+                <h5 class="card-title mb-1">Log KPI Entry</h5>
+                <p class="text-muted small mb-4">Select a KPI, enter the actual value for the period, and the system will compute the status automatically.</p>
 
-                <form id="kpiLogEntryForm">
+                <form asp-controller="Home" asp-action="KPILogEntry" method="post" id="kpiLogForm">
+                    @Html.AntiForgeryToken()
+
+                    @* ── KPI selector ── *@
                     <div class="mb-4">
-                        <label for="kpiName" class="form-label fw-semibold">KPI Name</label>
-                        <select class="form-select" id="kpiName" name="kpiName" required>
-                            <option value="">Select a KPI</option>
-                            <option value="Revenue Growth Rate">Revenue Growth Rate</option>
-                            <option value="Customer Satisfaction Score">Customer Satisfaction Score</option>
-                            <option value="Employee Turnover Rate">Employee Turnover Rate</option>
-                            <option value="Net Profit Margin">Net Profit Margin</option>
-                            <option value="Process Cycle Time">Process Cycle Time</option>
-                            <option value="Market Share">Market Share</option>
-                            <option value="Training Hours per Employee">Training Hours per Employee</option>
-                            <option value="Defect Rate">Defect Rate</option>
-                            <option value="Customer Retention Rate">Customer Retention Rate</option>
-                            <option value="Operating Cash Flow">Operating Cash Flow</option>
+                        <label asp-for="KpiId" class="form-label fw-semibold">KPI</label>
+                        <select asp-for="KpiId" class="form-select" id="kpiSelect" required>
+                            <option value="">— Select a KPI —</option>
+                            @foreach (var kpi in kpis)
+                            {
+                                var isSelected = Model.KpiId == kpi.Id;
+                                <option value="@kpi.Id"
+                                        data-target="@kpi.Target"
+                                        data-unit="@kpi.Unit"
+                                        data-department="@kpi.Department"
+                                        data-perspective="@kpi.Perspective"
+                                        selected="@(isSelected ? "selected" : null)">
+                                    @kpi.Name (@kpi.Department)
+                                </option>
+                            }
                         </select>
+                        <span asp-validation-for="KpiId" class="text-danger small"></span>
                     </div>
 
-                    <div class="row mb-4">
-                        <div class="col-12 col-md-6">
-                            <label for="targetValue" class="form-label fw-semibold">Target Value</label>
-                            <input type="text" class="form-control" id="targetValue" name="targetValue" placeholder="e.g., 15%, $2M, 4.5/5" required />
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label for="actualValue" class="form-label fw-semibold">Actual Value</label>
-                            <input type="text" class="form-control" id="actualValue" name="actualValue" placeholder="e.g., 17.2%, $2.3M, 4.7/5" required />
+                    @* ── KPI detail panel (shown after selection) ── *@
+                    <div id="kpiDetailPanel" class="kpi-detail-panel mb-4 @(Model.KpiId > 0 ? "" : "d-none")">
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3">
+                                <div class="kpi-detail-item">
+                                    <span class="kpi-detail-label">Department</span>
+                                    <span class="kpi-detail-value" id="detailDepartment">—</span>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="kpi-detail-item">
+                                    <span class="kpi-detail-label">Perspective</span>
+                                    <span class="kpi-detail-value" id="detailPerspective">—</span>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="kpi-detail-item">
+                                    <span class="kpi-detail-label">Target</span>
+                                    <span class="kpi-detail-value fw-bold text-primary" id="detailTarget">—</span>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="kpi-detail-item">
+                                    <span class="kpi-detail-label">Unit</span>
+                                    <span class="kpi-detail-value" id="detailUnit">—</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row mb-4">
-                        <div class="col-12 col-md-6">
-                            <label for="period" class="form-label fw-semibold">Period</label>
-                            <select class="form-select" id="period" name="period" required>
-                                <option value="Q1 2026">Q1 2026</option>
-                                <option value="Q2 2026">Q2 2026</option>
-                                <option value="Q3 2026">Q3 2026</option>
-                                <option value="Q4 2026">Q4 2026</option>
-                                <option value="Q4 2025">Q4 2025</option>
-                                <option value="Q3 2025">Q3 2025</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-6">
-                            <label for="dateLogged" class="form-label fw-semibold">Date Logged</label>
-                            <input type="date" class="form-control" id="dateLogged" name="dateLogged" value="2026-04-07" required />
-                        </div>
-                    </div>
-
+                    @* ── Actual value ── *@
                     <div class="mb-4">
-                        <label for="notes" class="form-label fw-semibold">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Add any additional context or observations..."></textarea>
+                        <label asp-for="ActualValue" class="form-label fw-semibold">
+                            Actual Value
+                            <span class="text-muted fw-normal" id="unitHint"></span>
+                        </label>
+                        <div class="input-group">
+                            <input asp-for="ActualValue"
+                                   type="number"
+                                   step="0.01"
+                                   min="0"
+                                   class="form-control"
+                                   id="actualValueInput"
+                                   placeholder="Enter the measured value"
+                                   required />
+                            <span class="input-group-text" id="unitSuffix">—</span>
+                        </div>
+                        <span asp-validation-for="ActualValue" class="text-danger small"></span>
+                        <div id="statusPreview" class="mt-2 d-none">
+                            <small>Computed status: <span id="statusBadge" class="status-badge"></span></small>
+                        </div>
+                    </div>
+
+                    @* ── Period + Date ── *@
+                    <div class="row mb-4">
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Period" class="form-label fw-semibold">Period</label>
+                            <select asp-for="Period" class="form-select" required>
+                                @foreach (var p in periods)
+                                {
+                                    var isSelected = Model.Period == p || (string.IsNullOrEmpty(Model.Period) && p == periods[0]);
+                                    <option value="@p" selected="@(isSelected ? "selected" : null)">@p</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Period" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="LoggedAt" class="form-label fw-semibold">Date Logged</label>
+                            <input asp-for="LoggedAt"
+                                   type="date"
+                                   class="form-control"
+                                   value="@Model.LoggedAt.ToString("yyyy-MM-dd")"
+                                   required />
+                            <span asp-validation-for="LoggedAt" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    @* ── Notes ── *@
+                    <div class="mb-4">
+                        <label asp-for="Notes" class="form-label fw-semibold">
+                            Notes <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <textarea asp-for="Notes"
+                                  class="form-control"
+                                  rows="3"
+                                  placeholder="Any context, observations, or reasons for variance..."></textarea>
                     </div>
 
                     <div class="d-flex gap-2 justify-content-end">
-                        <button type="button" class="btn btn-outline-secondary" id="resetKpiLogForm">Cancel</button>
+                        <a asp-controller="Home" asp-action="KPITracking" class="btn btn-outline-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
                             <i class="bi bi-floppy"></i>
                             Save Entry
@@ -73,5 +146,96 @@
                 </form>
             </div>
         </div>
+
     </div>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+    const select       = document.getElementById('kpiSelect');
+    const panel        = document.getElementById('kpiDetailPanel');
+    const detailDept   = document.getElementById('detailDepartment');
+    const detailPersp  = document.getElementById('detailPerspective');
+    const detailTarget = document.getElementById('detailTarget');
+    const detailUnit   = document.getElementById('detailUnit');
+    const unitSuffix   = document.getElementById('unitSuffix');
+    const unitHint     = document.getElementById('unitHint');
+    const actualInput  = document.getElementById('actualValueInput');
+    const statusPreview= document.getElementById('statusPreview');
+    const statusBadge  = document.getElementById('statusBadge');
+
+    let currentTarget = null;
+    let currentUnit   = '';
+    let lowerIsBetter = false;
+
+    function updatePanel(opt) {
+        if (!opt || !opt.value) {
+            panel.classList.add('d-none');
+            unitSuffix.textContent = '—';
+            unitHint.textContent   = '';
+            statusPreview.classList.add('d-none');
+            currentTarget = null;
+            return;
+        }
+
+        const target = parseFloat(opt.dataset.target);
+        const unit   = opt.dataset.unit || '';
+        const dept   = opt.dataset.department || '—';
+        const persp  = opt.dataset.perspective || '—';
+
+        detailDept.textContent   = dept;
+        detailPersp.textContent  = persp;
+        detailTarget.textContent = target + ' ' + unit;
+        detailUnit.textContent   = unit;
+        unitSuffix.textContent   = unit || '—';
+        unitHint.textContent     = unit ? `(${unit})` : '';
+
+        currentTarget = target;
+        currentUnit   = unit;
+        lowerIsBetter = unit === 'days'
+            || opt.text.toLowerCase().includes('turnover')
+            || opt.text.toLowerCase().includes('defect')
+            || opt.text.toLowerCase().includes('cycle');
+
+        panel.classList.remove('d-none');
+        updateStatusPreview();
+    }
+
+    function computeStatus(actual) {
+        if (currentTarget === null || isNaN(actual)) return null;
+        if (lowerIsBetter) {
+            if (actual <= currentTarget)              return 'On Track';
+            if (actual <= currentTarget * 1.25)       return 'At Risk';
+            return 'Behind';
+        }
+        if (actual >= currentTarget)                  return 'On Track';
+        if (actual >= currentTarget * 0.85)           return 'At Risk';
+        return 'Behind';
+    }
+
+    function updateStatusPreview() {
+        const actual = parseFloat(actualInput.value);
+        const status = computeStatus(actual);
+        if (!status) { statusPreview.classList.add('d-none'); return; }
+
+        statusPreview.classList.remove('d-none');
+        statusBadge.textContent  = status;
+        statusBadge.className    = 'status-badge ' + {
+            'On Track': 'status-ontrack',
+            'At Risk':  'status-atrisk',
+            'Behind':   'status-behind'
+        }[status];
+    }
+
+    select.addEventListener('change', function () {
+        updatePanel(this.options[this.selectedIndex]);
+    });
+
+    actualInput.addEventListener('input', updateStatusPreview);
+
+    // Init on page load if KPI already selected (e.g. validation failure)
+    if (select.value) updatePanel(select.options[select.selectedIndex]);
+})();
+</script>
+}

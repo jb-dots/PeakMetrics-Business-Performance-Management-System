@@ -1,65 +1,71 @@
 @model NotificationsPageViewModel
-
 @{
-    static string severityClass(AlertSeverity severity)
-        => severity switch
-        {
-            AlertSeverity.Critical => "notification-severity-critical",
-            AlertSeverity.Warning => "notification-severity-warning",
-            _ => "notification-severity-standard"
-        };
+    static string severityClass(AlertSeverity s) => s switch
+    {
+        AlertSeverity.Critical => "notification-severity-critical",
+        AlertSeverity.Warning  => "notification-severity-warning",
+        _                      => "notification-severity-standard"
+    };
 
-    static string severityDotClass(AlertSeverity severity)
-        => severity switch
-        {
-            AlertSeverity.Critical => "notification-dot-critical",
-            AlertSeverity.Warning => "notification-dot-warning",
-            _ => "notification-dot-standard"
-        };
+    static string severityDotClass(AlertSeverity s) => s switch
+    {
+        AlertSeverity.Critical => "notification-dot-critical",
+        AlertSeverity.Warning  => "notification-dot-warning",
+        _                      => "notification-dot-standard"
+    };
 
     var notifications = Model?.Notifications ?? Array.Empty<NotificationItemViewModel>();
-    var unread = notifications.Count(n => !n.Read);
+    var unread        = notifications.Count(n => !n.Read);
 }
-
-<div class="alert @(Model?.IsFallback == true ? "alert-warning" : "alert-primary") d-flex justify-content-between align-items-center gap-2 mb-4">
-    <span>@(Model?.DataMessage ?? "Live notifications feed initialized.")</span>
-    @if (Model?.IsFallback == true)
-    {
-        <a asp-controller="Home" asp-action="Notifications" asp-route-refresh="true" class="btn btn-sm btn-outline-warning api-retry-btn">Retry Sync</a>
-    }
-</div>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="mb-0 text-muted">
-        You have <strong class="text-primary" id="unreadNotificationsCount">@unread</strong> unread notifications
+        You have <strong class="text-primary" id="unreadNotificationsCount">@unread</strong>
+        unread notification@(unread == 1 ? "" : "s")
     </p>
-    <button class="btn btn-sm text-primary" id="markAllNotificationsRead">Mark all as read</button>
+    @if (notifications.Any())
+    {
+        <button class="btn btn-sm text-primary" id="markAllNotificationsRead">Mark all as read</button>
+    }
 </div>
 
-<div class="d-flex flex-column gap-3">
-    @foreach (var item in notifications)
-    {
-        <div class="card card-clean notification-item @(item.Read ? string.Empty : "notification-unread") @severityClass(item.Severity)">
-            <div class="card-body p-3 p-md-4">
-                <div class="d-flex gap-3">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center notification-icon-wrap">
-                        <i class="bi @item.Icon fs-5"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
-                            <h6 class="mb-0 fw-semibold">@item.Title</h6>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="text-muted small text-nowrap">@item.Time</span>
-                                @if (!item.Read)
-                                {
-                                    <span class="notification-dot notification-dot-main rounded-circle @severityDotClass(item.Severity)"></span>
-                                }
-                            </div>
+@if (!notifications.Any())
+{
+    <div class="card card-clean">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-bell-slash fs-1 d-block mb-3 opacity-25"></i>
+            <h6 class="fw-semibold">No notifications yet</h6>
+            <p class="mb-0 small">Alerts will appear here automatically when a KPI entry is At Risk or Behind target.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3">
+        @foreach (var item in notifications)
+        {
+            <div class="card card-clean notification-item @(item.Read ? string.Empty : "notification-unread") @severityClass(item.Severity)">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex gap-3">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center notification-icon-wrap flex-shrink-0">
+                            <i class="bi @item.Icon fs-5"></i>
                         </div>
-                        <p class="mb-0 text-muted" style="font-size:0.9rem;">@item.Message</p>
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
+                                <h6 class="mb-0 fw-semibold">@item.Title</h6>
+                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                    <span class="text-muted small text-nowrap">@item.Time</span>
+                                    @if (!item.Read)
+                                    {
+                                        <span class="notification-dot notification-dot-main rounded-circle @severityDotClass(item.Severity)"></span>
+                                    }
+                                </div>
+                            </div>
+                            <p class="mb-0 text-muted" style="font-size:0.9rem;">@item.Message</p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    }
-</div>
+        }
+    </div>
+}

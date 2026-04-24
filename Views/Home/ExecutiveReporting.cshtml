@@ -1,41 +1,28 @@
+@model PeakMetrics.Web.ViewModels.ExecutiveReportingViewModel
+
 @{
-    var logoFallbackScript = "this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none');";
-    var kpis = new[]
-    {
-        new { Name = "Revenue Growth Rate", Target = "15%", Actual = "17.2%", Status = "On Track", Variance = "+2.2%" },
-        new { Name = "Customer Satisfaction Score", Target = "4.5/5", Actual = "4.7/5", Status = "On Track", Variance = "+0.2" },
-        new { Name = "Market Share", Target = "25%", Actual = "26.8%", Status = "On Track", Variance = "+1.8%" },
-        new { Name = "Process Cycle Time", Target = "3 days", Actual = "5 days", Status = "Behind", Variance = "+2 days" },
-        new { Name = "Employee Turnover Rate", Target = "< 10%", Actual = "12.5%", Status = "At Risk", Variance = "+2.5%" }
-    };
-
-    var scorecards = new[]
-    {
-        new { Perspective = "Financial", Score = 90, Trend = "+5%" },
-        new { Perspective = "Customer", Score = 89, Trend = "+4%" },
-        new { Perspective = "Internal Process", Score = 84, Trend = "+2%" },
-        new { Perspective = "Learning & Growth", Score = 81, Trend = "+3%" }
-    };
-
-    var goals = new[]
-    {
-        new { Name = "Digital Transformation Initiative", Progress = 65, Status = "On Track" },
-        new { Name = "Market Expansion Strategy", Progress = 78, Status = "On Track" },
-        new { Name = "Customer Experience Excellence", Progress = 55, Status = "At Risk" }
-    };
+    var logoFallbackScript = "this.style.display='none';";
 }
 
+<!-- Filter bar -->
 <div class="card card-clean mb-4">
     <div class="card-body">
         <div class="row g-3 align-items-end">
             <div class="col-12 col-md-3">
                 <label class="form-label small fw-semibold">Reporting Period</label>
-                <select class="form-select">
-                    <option>Q1 2026</option>
-                    <option>Q2 2026</option>
-                    <option>Q3 2026</option>
-                    <option>Q4 2026</option>
-                    <option>Year 2025</option>
+                <select class="form-select" id="reportPeriodSelect">
+                    @if (!Model.AvailablePeriods.Any())
+                    {
+                        <option value="">No data yet</option>
+                    }
+                    else
+                    {
+                        @foreach (var period in Model.AvailablePeriods)
+                        {
+                            var sel = period == Model.SelectedPeriod;
+                            <option value="@period" selected="@(sel ? "selected" : null)">@period</option>
+                        }
+                    }
                 </select>
             </div>
             <div class="col-12 col-md-6">
@@ -57,104 +44,194 @@
             </div>
             <div class="col-12 col-md-3">
                 <button class="btn btn-primary-custom w-100" id="generateExecutiveReport">
-                    <i class="bi bi-printer me-2"></i>
-                    Generate Report
+                    <i class="bi bi-printer me-2"></i>Generate Report
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card card-clean" id="report-preview">
-    <div class="card-body p-4 p-lg-5">
-        <div class="text-center border-bottom pb-4 mb-4">
-            <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="report-logo-image mb-2" onerror="@logoFallbackScript" />
-            <h2 class="brand-title mb-2 d-none">PeakMetrics</h2>
-            <h4 class="fw-semibold mb-1">Executive Performance Report</h4>
-            <p class="text-muted mb-0">Period: Q1 2026</p>
-        </div>
-
-        <div class="mb-4">
-            <h5 class="fw-semibold mb-3">Performance Summary</h5>
-            <div class="row g-3">
-                <div class="col-6 col-md-3"><div class="p-3 rounded bg-light text-center"><div class="small text-muted">Overall Score</div><div class="fs-3 fw-bold text-primary">85</div><div class="small text-primary fw-semibold">+3.2%</div></div></div>
-                <div class="col-6 col-md-3"><div class="p-3 rounded bg-light text-center"><div class="small text-muted">Total KPIs</div><div class="fs-3 fw-bold">48</div></div></div>
-                <div class="col-6 col-md-2"><div class="p-3 rounded text-center" style="background:#eff6ff;"><div class="small" style="color:#1e40af;">On Track</div><div class="fs-3 fw-bold" style="color:#1B4FD8;">32</div></div></div>
-                <div class="col-6 col-md-2"><div class="p-3 rounded text-center" style="background:#dbeafe;"><div class="small" style="color:#1e3a8a;">At Risk</div><div class="fs-3 fw-bold" style="color:#3b82f6;">12</div></div></div>
-                <div class="col-6 col-md-2"><div class="p-3 rounded text-center" style="background:#f1f5f9;"><div class="small" style="color:#475569;">Behind</div><div class="fs-3 fw-bold" style="color:#60a5fa;">4</div></div></div>
-            </div>
-        </div>
-
-        <div class="mb-4" id="execSectionKPIs">
-            <h5 class="fw-semibold mb-3">Key Performance Indicators</h5>
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>KPI Name</th>
-                            <th>Target</th>
-                            <th>Actual</th>
-                            <th>Variance</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var kpi in kpis)
-                        {
-                            var statusClass = kpi.Status == "On Track"
-                                ? "status-badge status-ontrack"
-                                : kpi.Status == "At Risk"
-                                    ? "status-badge status-atrisk"
-                                    : "status-badge status-behind";
-                            <tr>
-                                <td>@kpi.Name</td>
-                                <td>@kpi.Target</td>
-                                <td class="fw-semibold">@kpi.Actual</td>
-                                <td>@kpi.Variance</td>
-                                <td><span class="@statusClass">@kpi.Status</span></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="mb-4" id="execSectionScorecard">
-            <h5 class="fw-semibold mb-3">Balanced Scorecard Summary</h5>
-            <div class="row g-3">
-                @foreach (var item in scorecards)
-                {
-                    <div class="col-6 col-md-3">
-                        <div class="p-3 rounded bg-light">
-                            <div class="small text-muted mb-2">@item.Perspective</div>
-                            <div class="fs-4 fw-bold mb-1">@item.Score</div>
-                            <div class="small fw-semibold text-primary">@item.Trend</div>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div id="execSectionGoals">
-            <h5 class="fw-semibold mb-3">Strategic Goals Progress</h5>
-            <div class="d-flex flex-column gap-3">
-                @foreach (var goal in goals)
-                {
-                    var statusClass = goal.Status == "On Track" ? "status-badge status-ontrack" : "status-badge status-atrisk";
-                    <div class="p-3 rounded bg-light">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-semibold">@goal.Name</span>
-                            <span class="@statusClass">@goal.Status</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="progress flex-grow-1" style="height:8px;">
-                                <div class="progress-bar" style="width:@(goal.Progress)%;background:#1B4FD8;"></div>
-                            </div>
-                            <span class="small fw-semibold">@goal.Progress%</span>
-                        </div>
-                    </div>
-                }
-            </div>
+@if (!Model.Kpis.Any() && !Model.Goals.Any())
+{
+    <div class="card card-clean">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-file-earmark-text fs-1 d-block mb-3 opacity-25"></i>
+            <h5 class="fw-semibold">No report data yet</h5>
+            <p class="mb-3 small">Log KPI entries and create strategic goals to generate an executive report.</p>
+            <a asp-controller="Home" asp-action="KPILogEntry" class="btn btn-primary-custom btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Log KPI Entry
+            </a>
         </div>
     </div>
-</div>
+}
+else
+{
+    <!-- Report preview -->
+    <div class="card card-clean" id="report-preview">
+        <div class="card-body p-4 p-lg-5">
+
+            <!-- Header -->
+            <div class="text-center border-bottom pb-4 mb-4">
+                <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics" class="report-logo-image mb-2"
+                     onerror="@logoFallbackScript" />
+                <h4 class="fw-semibold mb-1">Executive Performance Report</h4>
+                @if (!string.IsNullOrEmpty(Model.SelectedPeriod))
+                {
+                    <p class="text-muted mb-0">Period: @Model.SelectedPeriod</p>
+                }
+            </div>
+
+            <!-- Summary cards -->
+            <div class="mb-4">
+                <h5 class="fw-semibold mb-3">Performance Summary</h5>
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 rounded bg-light text-center">
+                            <div class="small text-muted">Overall Score</div>
+                            <div class="fs-3 fw-bold text-primary">@Model.OverallPct%</div>
+                            <div class="small text-muted">On Track</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 rounded bg-light text-center">
+                            <div class="small text-muted">Total KPIs</div>
+                            <div class="fs-3 fw-bold">@Model.TotalKpis</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-3 rounded text-center" style="background:#f0fdf4;">
+                            <div class="small text-success">On Track</div>
+                            <div class="fs-3 fw-bold text-success">@Model.OnTrack</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-3 rounded text-center" style="background:#fffbeb;">
+                            <div class="small text-warning">At Risk</div>
+                            <div class="fs-3 fw-bold" style="color:#d97706;">@Model.AtRisk</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="p-3 rounded text-center" style="background:#fef2f2;">
+                            <div class="small text-danger">Behind</div>
+                            <div class="fs-3 fw-bold text-danger">@Model.Behind</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI table -->
+            <div class="mb-4" id="execSectionKPIs">
+                <h5 class="fw-semibold mb-3">Key Performance Indicators</h5>
+                @if (!Model.Kpis.Any())
+                {
+                    <p class="text-muted small">No KPI data available.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>KPI Name</th>
+                                    <th>Department</th>
+                                    <th>Target</th>
+                                    <th>Actual</th>
+                                    <th>Variance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var kpi in Model.Kpis)
+                                {
+                                    var statusCss = kpi.Status switch
+                                    {
+                                        "On Track" => "status-badge status-ontrack",
+                                        "At Risk"  => "status-badge status-atrisk",
+                                        "Behind"   => "status-badge status-behind",
+                                        _          => "status-badge bg-light text-secondary border"
+                                    };
+                                    <tr>
+                                        <td class="fw-semibold">@kpi.Name</td>
+                                        <td class="text-muted">@kpi.Department</td>
+                                        <td>@kpi.Target</td>
+                                        <td class="fw-semibold">@kpi.Actual</td>
+                                        <td class="text-muted">@kpi.Variance</td>
+                                        <td><span class="@statusCss">@kpi.Status</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <!-- Scorecard summary -->
+            <div class="mb-4" id="execSectionScorecard">
+                <h5 class="fw-semibold mb-3">Balanced Scorecard Summary</h5>
+                @if (!Model.Scorecards.Any())
+                {
+                    <p class="text-muted small">No scorecard data available.</p>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var sc in Model.Scorecards)
+                        {
+                            <div class="col-6 col-md-3">
+                                <div class="p-3 rounded bg-light">
+                                    <div class="small text-muted mb-2 fw-semibold">@sc.Perspective</div>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <span class="status-badge status-ontrack">@sc.OnTrack On Track</span>
+                                        @if (sc.AtRisk > 0)
+                                        {
+                                            <span class="status-badge status-atrisk">@sc.AtRisk At Risk</span>
+                                        }
+                                        @if (sc.Behind > 0)
+                                        {
+                                            <span class="status-badge status-behind">@sc.Behind Behind</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Strategic goals -->
+            <div id="execSectionGoals">
+                <h5 class="fw-semibold mb-3">Strategic Goals</h5>
+                @if (!Model.Goals.Any())
+                {
+                    <p class="text-muted small">No strategic goals defined yet.</p>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var goal in Model.Goals)
+                        {
+                            var statusCss = goal.Status switch
+                            {
+                                "In Progress" => "status-badge status-ontrack",
+                                "Completed"   => "status-badge status-ontrack",
+                                "Not Started" => "status-badge bg-light text-secondary border",
+                                _             => "status-badge bg-light text-secondary border"
+                            };
+                            <div class="p-3 rounded bg-light d-flex justify-content-between align-items-center gap-3">
+                                <div>
+                                    <span class="fw-semibold">@goal.Title</span>
+                                    @if (!string.IsNullOrEmpty(goal.DueDate))
+                                    {
+                                        <span class="text-muted small ms-2">Due: @goal.DueDate</span>
+                                    }
+                                </div>
+                                <span class="@statusCss flex-shrink-0">@goal.Status</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+}

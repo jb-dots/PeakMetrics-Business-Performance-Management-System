@@ -1,0 +1,24 @@
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-6 col-lg-5">
+        <div class="card card-clean text-center py-5 px-4">
+            <div class="mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                     style="width:72px;height:72px;background:#fef2f2;">
+                    <i class="bi bi-shield-lock-fill" style="font-size:2rem;color:#ef4444;"></i>
+                </div>
+                <h4 class="fw-bold mb-2">Access Denied</h4>
+                <p class="text-muted mb-0">
+                    You don't have permission to view this page.<br />
+                    Contact your administrator if you think this is a mistake.
+                </p>
+            </div>
+            <a asp-controller="Home" asp-action="Dashboard" class="btn btn-primary-custom">
+                <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>

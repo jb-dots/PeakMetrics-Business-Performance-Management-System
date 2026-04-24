@@ -1,30 +1,39 @@
+@using PeakMetrics.Web.ViewModels
 @{
     static string quickSeverityClass(AlertSeverity severity)
         => severity switch
         {
             AlertSeverity.Critical => "quick-severity-critical",
-            AlertSeverity.Warning => "quick-severity-warning",
-            _ => "quick-severity-standard"
+            AlertSeverity.Warning  => "quick-severity-warning",
+            _                      => "quick-severity-standard"
         };
 
-    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "Dashboard";
-    var title = ViewData["Title"]?.ToString() ?? "PeakMetrics";
-    var logoFallbackScript = "this.classList.add('d-none'); this.nextElementSibling.classList.remove('d-none'); this.nextElementSibling.nextElementSibling.classList.remove('d-none');";
+    var currentAction       = ViewContext.RouteData.Values["action"]?.ToString() ?? "Dashboard";
+    var title               = ViewData["Title"]?.ToString() ?? "PeakMetrics";
     var isNotificationsPage = string.Equals(currentAction, "Notifications", StringComparison.OrdinalIgnoreCase);
-    var isProfilePage = string.Equals(currentAction, "Profile", StringComparison.OrdinalIgnoreCase);
-    var quickNotifications = (ViewData["QuickNotifications"] as IReadOnlyList<NotificationItemViewModel>) ?? Array.Empty<NotificationItemViewModel>();
-    var unreadQuickNotifications = quickNotifications.Count(n => !n.Read);
+    var isProfilePage       = string.Equals(currentAction, "Profile",       StringComparison.OrdinalIgnoreCase);
+
+    var quickNotifications      = (ViewData["QuickNotifications"] as IReadOnlyList<NotificationItemViewModel>) ?? Array.Empty<NotificationItemViewModel>();
+    var unreadQuickNotifications = (int)(ViewData["UnreadQuickNotifications"] ?? 0);
+
+    var sessionUserName     = ViewData["SessionUserName"]?.ToString()     ?? "User";
+    var sessionUserRole     = ViewData["SessionUserRole"]?.ToString()     ?? string.Empty;
+    var sessionUserInitials = ViewData["SessionUserInitials"]?.ToString() ?? "U";
+
     var menuItems = new[]
     {
-        new { Action = "Dashboard", Label = "Dashboard", Icon = "bi-speedometer2" },
-        new { Action = "KPITracking", Label = "KPI Tracking", Icon = "bi-bullseye" },
-        new { Action = "BalancedScorecard", Label = "Balanced Scorecards", Icon = "bi-grid-3x3-gap" },
-        new { Action = "PerformanceAnalytics", Label = "Performance Analytics", Icon = "bi-bar-chart" },
-        new { Action = "StrategicPlanning", Label = "Strategic Planning", Icon = "bi-lightbulb" },
-        new { Action = "ExecutiveReporting", Label = "Executive Reporting", Icon = "bi-file-earmark-text" },
-        new { Action = "DepartmentManagement", Label = "Department Management", Icon = "bi-building" },
-        new { Action = "AuditLog", Label = "Audit Log", Icon = "bi-shield-lock" },
+        new { Action = "Dashboard",           Label = "Dashboard",            Icon = "bi-speedometer2",       Roles = new[]{ "Admin","Administrator","Manager","User","Executive" } },
+        new { Action = "KPITracking",         Label = "KPI Tracking",         Icon = "bi-bullseye",           Roles = new[]{ "Admin","Manager","User","Executive" } },
+        new { Action = "BalancedScorecard",   Label = "Balanced Scorecards",  Icon = "bi-grid-3x3-gap",       Roles = new[]{ "Admin","Manager","User","Executive" } },
+        new { Action = "PerformanceAnalytics",Label = "Performance Analytics",Icon = "bi-bar-chart",          Roles = new[]{ "Admin","Manager","Executive" } },
+        new { Action = "StrategicPlanning",   Label = "Strategic Planning",   Icon = "bi-lightbulb",          Roles = new[]{ "Admin","Manager","Executive" } },
+        new { Action = "ExecutiveReporting",  Label = "Executive Reporting",  Icon = "bi-file-earmark-text",  Roles = new[]{ "Admin","Manager","Executive" } },
+        new { Action = "DepartmentManagement",Label = "Department Management",Icon = "bi-building",           Roles = new[]{ "Admin","Administrator" } },
+        new { Action = "AuditLog",            Label = "Audit Log",            Icon = "bi-shield-lock",        Roles = new[]{ "Admin" } },
     };
+
+    var visibleMenuItems = menuItems.Where(m => m.Roles.Contains(sessionUserRole)).ToArray();
+    var canManageKpis    = sessionUserRole is "Admin" or "Administrator" or "Manager";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -46,76 +55,134 @@
     else
     {
         <div class="app-shell d-flex">
+            <!-- ── Desktop sidebar ── -->
             <aside class="app-sidebar d-none d-md-flex" aria-label="Primary navigation">
                 <div class="app-logo-wrap">
                     <div class="app-brand">
-                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image" onerror="@logoFallbackScript" />
-                        <h3 class="app-logo app-logo-fallback mb-0 d-none">PeakMetrics</h3>
-                        <p class="app-tagline app-logo-fallback mb-0 d-none">Monitor. Measure. Perform.</p>
+                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image"
+                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('d-none');" />
+                        <span class="app-logo-fallback-text d-none">PeakMetrics</span>
                     </div>
                 </div>
                 <nav class="app-nav">
-                    @foreach (var item in menuItems)
+                    @foreach (var item in visibleMenuItems)
                     {
                         var isActive = string.Equals(item.Action, currentAction, StringComparison.OrdinalIgnoreCase);
-                        <a asp-controller="Home" asp-action="@item.Action" class="app-nav-link @(isActive ? "active" : string.Empty)" data-nav-label="@item.Label" title="@item.Label">
-                            <span class="app-nav-icon">
-                                <i class="bi @item.Icon"></i>
-                            </span>
+                        <a asp-controller="Home" asp-action="@item.Action"
+                           class="app-nav-link @(isActive ? "active" : string.Empty)"
+                           title="@item.Label">
+                            <span class="app-nav-icon"><i class="bi @item.Icon"></i></span>
                             <span class="app-nav-label">@item.Label</span>
                         </a>
                     }
+                    @if (canManageKpis)
+                    {
+                        var isKpiMgmt = string.Equals(currentAction, "KpiManagement", StringComparison.OrdinalIgnoreCase);
+                        <a asp-controller="Home" asp-action="KpiManagement"
+                           class="app-nav-link @(isKpiMgmt ? "active" : string.Empty)"
+                           title="KPI Management">
+                            <span class="app-nav-icon"><i class="bi bi-sliders"></i></span>
+                            <span class="app-nav-label">KPI Management</span>
+                        </a>
+                    }
                 </nav>
+
+                <!-- Sidebar footer: user info + logout -->
+                <div class="app-sidebar-footer">
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-avatar">@sessionUserInitials</div>
+                        <div class="sidebar-user-meta">
+                            <span class="sidebar-user-name">@sessionUserName</span>
+                            <span class="sidebar-user-role">@sessionUserRole</span>
+                        </div>
+                    </div>
+                    <button type="button" class="sidebar-logout-btn" id="logoutTrigger" title="Sign out" aria-label="Sign out">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </div>
             </aside>
 
+            <!-- ── Mobile offcanvas sidebar ── -->
             <div class="offcanvas offcanvas-start app-sidebar-offcanvas d-md-none" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
                 <div class="offcanvas-header app-logo-wrap">
                     <div class="app-brand app-brand-mobile">
                         <span class="visually-hidden" id="mobileSidebarLabel">PeakMetrics navigation</span>
-                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image" onerror="@logoFallbackScript" />
-                        <h3 class="app-logo app-logo-fallback mb-0 d-none">PeakMetrics</h3>
-                        <p class="app-tagline app-logo-fallback mb-0 d-none">Monitor. Measure. Perform.</p>
+                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image"
+                             onerror="this.style.display='none';" />
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                 </div>
-                <div class="offcanvas-body p-0">
-                    <nav class="app-nav">
-                        @foreach (var item in menuItems)
+                <div class="offcanvas-body p-0 d-flex flex-column">
+                    <nav class="app-nav flex-grow-1">
+                        @foreach (var item in visibleMenuItems)
                         {
                             var isActive = string.Equals(item.Action, currentAction, StringComparison.OrdinalIgnoreCase);
-                            <a asp-controller="Home" asp-action="@item.Action" class="app-nav-link @(isActive ? "active" : string.Empty)">
-                                <span class="app-nav-icon">
-                                    <i class="bi @item.Icon"></i>
-                                </span>
+                            <a asp-controller="Home" asp-action="@item.Action"
+                               class="app-nav-link @(isActive ? "active" : string.Empty)">
+                                <span class="app-nav-icon"><i class="bi @item.Icon"></i></span>
                                 <span class="app-nav-label">@item.Label</span>
                             </a>
                         }
+                        @if (canManageKpis)
+                        {
+                            var isKpiMgmt = string.Equals(currentAction, "KpiManagement", StringComparison.OrdinalIgnoreCase);
+                            <a asp-controller="Home" asp-action="KpiManagement"
+                               class="app-nav-link @(isKpiMgmt ? "active" : string.Empty)">
+                                <span class="app-nav-icon"><i class="bi bi-sliders"></i></span>
+                                <span class="app-nav-label">KPI Management</span>
+                            </a>
+                        }
                     </nav>
+                    <div class="app-sidebar-footer">
+                        <div class="sidebar-user-info">
+                            <div class="sidebar-user-avatar">@sessionUserInitials</div>
+                            <div class="sidebar-user-meta">
+                                <span class="sidebar-user-name">@sessionUserName</span>
+                                <span class="sidebar-user-role">@sessionUserRole</span>
+                            </div>
+                        </div>
+                        <button type="button" class="sidebar-logout-btn" id="logoutTriggerMobile" title="Sign out" aria-label="Sign out">
+                            <i class="bi bi-box-arrow-right"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            <!-- ── Main content ── -->
             <main class="app-main d-flex flex-column">
                 <header class="app-topbar d-flex align-items-center justify-content-between">
                     <div class="app-topbar-left d-flex align-items-center gap-2">
-                        <button type="button" class="topbar-icon-btn app-desktop-collapse-toggle d-none d-md-inline-flex" id="desktopSidebarToggle" aria-label="Collapse sidebar" aria-pressed="false">
+                        <button type="button" class="topbar-icon-btn app-desktop-collapse-toggle d-none d-md-inline-flex"
+                                id="desktopSidebarToggle" aria-label="Collapse sidebar" aria-pressed="false">
                             <i class="bi bi-layout-sidebar"></i>
                         </button>
-                        <button type="button" class="topbar-icon-btn app-menu-toggle d-md-none" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar" aria-label="Open navigation menu">
+                        <button type="button" class="topbar-icon-btn app-menu-toggle d-md-none"
+                                data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar"
+                                aria-controls="mobileSidebar" aria-label="Open navigation menu">
                             <i class="bi bi-list"></i>
                         </button>
                         <h4 class="mb-0 app-page-title">@title</h4>
                     </div>
                     <div class="app-topbar-actions">
+                        <!-- Notification bell -->
                         <div class="topbar-dropdown-wrap" id="notificationDropdownWrap">
-                            <button type="button" class="topbar-icon-btn @(isNotificationsPage ? "active" : string.Empty)" id="notificationDropdownToggle" aria-expanded="false" aria-controls="notificationDropdownPanel" aria-label="Open notifications quick panel">
+                            <button type="button"
+                                    class="topbar-icon-btn @(isNotificationsPage ? "active" : string.Empty)"
+                                    id="notificationDropdownToggle"
+                                    aria-expanded="false"
+                                    aria-controls="notificationDropdownPanel"
+                                    aria-label="Open notifications quick panel">
                                 <i class="bi bi-bell"></i>
-                                <span id="topbarNotificationBadge" class="topbar-badge" data-default-count="@unreadQuickNotifications">@unreadQuickNotifications</span>
+                                <span id="topbarNotificationBadge" class="topbar-badge"
+                                      data-default-count="@unreadQuickNotifications">@unreadQuickNotifications</span>
                             </button>
                             <div class="notification-dropdown card-clean" id="notificationDropdownPanel" hidden>
                                 <div class="notification-dropdown-header">
                                     <div>
                                         <h6 class="mb-0 fw-semibold">Notifications</h6>
-                                        <small class="text-muted"><span id="quickNotificationUnreadCount">@unreadQuickNotifications</span> unread</small>
+                                        <small class="text-muted">
+                                            <span id="quickNotificationUnreadCount">@unreadQuickNotifications</span> unread
+                                        </small>
                                     </div>
                                     <a asp-controller="Home" asp-action="Notifications" class="small text-decoration-none">View all</a>
                                 </div>
@@ -126,7 +193,9 @@
                                     }
                                     @foreach (var item in quickNotifications)
                                     {
-                                        <button type="button" class="quick-notification-item @(item.Read ? string.Empty : "notification-unread") @quickSeverityClass(item.Severity)" data-read="@(item.Read ? "true" : "false")">
+                                        <button type="button"
+                                                class="quick-notification-item @(item.Read ? string.Empty : "notification-unread") @quickSeverityClass(item.Severity)"
+                                                data-read="@(item.Read ? "true" : "false")">
                                             <div class="quick-notification-main">
                                                 <div class="quick-notification-title-wrap">
                                                     <p class="quick-notification-title">@item.Title</p>
@@ -142,19 +211,46 @@
                                     }
                                 </div>
                                 <div class="notification-dropdown-footer">
-                                    <button type="button" class="btn btn-sm text-primary px-0" id="markAllTopbarNotificationsRead">Mark all as read</button>
+                                    <button type="button" class="btn btn-sm text-primary px-0" id="markAllTopbarNotificationsRead">
+                                        Mark all as read
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        <a asp-controller="Home" asp-action="Profile" class="app-user-pill-link @(isProfilePage ? "active" : string.Empty)" aria-label="Open profile page">
-                            <span class="app-user-pill">JD</span>
+
+                        <!-- Profile pill -->
+                        <a asp-controller="Home" asp-action="Profile"
+                           class="app-user-pill-link @(isProfilePage ? "active" : string.Empty)"
+                           aria-label="Open profile page">
+                            <span class="app-user-pill">@sessionUserInitials</span>
                         </a>
                     </div>
                 </header>
+
                 <section class="app-content">
                     @RenderBody()
                 </section>
             </main>
+        </div>
+
+        <!-- ── Logout confirmation modal ── -->
+        <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content logout-modal-content">
+                    <div class="logout-modal-icon">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </div>
+                    <h5 class="logout-modal-title" id="logoutModalLabel">Sign out?</h5>
+                    <p class="logout-modal-body">You'll need to sign in again to access your dashboard.</p>
+                    <div class="logout-modal-actions">
+                        <button type="button" class="btn logout-cancel-btn" data-bs-dismiss="modal">Cancel</button>
+                        <form asp-controller="Home" asp-action="Logout" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn logout-confirm-btn">Sign out</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     }
 
@@ -162,5 +258,16 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+
+    @if (currentAction != "Login")
+    {
+        <script>
+            (function () {
+                const modal = new bootstrap.Modal(document.getElementById('logoutModal'));
+                document.getElementById('logoutTrigger')?.addEventListener('click', () => modal.show());
+                document.getElementById('logoutTriggerMobile')?.addEventListener('click', () => modal.show());
+            })();
+        </script>
+    }
 </body>
 </html>

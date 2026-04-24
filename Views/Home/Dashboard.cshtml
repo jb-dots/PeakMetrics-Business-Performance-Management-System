@@ -1,80 +1,23 @@
-@model DashboardPageViewModel
+@model object
+@using PeakMetrics.Web.ViewModels
 
-@{
-    var summaryCards = new[]
-    {
-        new { Title = "Total KPIs Tracked", Value = "48", Icon = "bi-bar-chart-line", Bg = "#EFF6FF", Color = "#1B4FD8" },
-        new { Title = "On Track", Value = "32", Icon = "bi-graph-up-arrow", Bg = "#EFF6FF", Color = "#1B4FD8" },
-        new { Title = "At Risk", Value = "12", Icon = "bi-exclamation-circle", Bg = "#EFF6FF", Color = "#1B4FD8" },
-        new { Title = "Behind Target", Value = "4", Icon = "bi-graph-down-arrow", Bg = "#EFF6FF", Color = "#1B4FD8" }
-    };
-
-    var activities = Model?.Activities ?? Array.Empty<ActivityItemViewModel>();
+@if (Model is SuperAdminDashboardViewModel superAdmin)
+{
+    <partial name="_SuperAdminDashboard" model="superAdmin" />
 }
-
-<div class="alert @(Model?.IsFallback == true ? "alert-warning" : "alert-primary") d-flex justify-content-between align-items-center gap-2 mb-4">
-    <span>@(Model?.DataMessage ?? "Live dashboard feed initialized.")</span>
-    @if (Model?.IsFallback == true)
-    {
-        <a asp-controller="Home" asp-action="Dashboard" asp-route-refresh="true" class="btn btn-sm btn-outline-warning api-retry-btn">Retry Sync</a>
-    }
-</div>
-
-<div class="row g-4 mb-4">
-    @foreach (var card in summaryCards)
-    {
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card card-clean h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="text-muted mb-1 small">@card.Title</p>
-                        <h2 class="mb-0 fw-bold">@card.Value</h2>
-                    </div>
-                    <div class="d-flex align-items-center justify-content-center rounded-3" style="width:56px;height:56px;background:@card.Bg;">
-                        <i class="bi @card.Icon" style="font-size:1.5rem;color:@card.Color;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-</div>
-
-<div class="row g-4">
-    <div class="col-12 col-lg-8">
-        <div class="card card-clean">
-            <div class="card-body">
-                <h5 class="card-title mb-4">KPI Trends</h5>
-                <div class="canvas-wrap">
-                    <canvas id="dashboardLineChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-4">
-        <div class="card card-clean">
-            <div class="card-body">
-                <h5 class="card-title mb-4">Recent Activity</h5>
-                <div style="max-height:350px;overflow:auto;">
-                    @for (var i = 0; i < activities.Count; i++)
-                    {
-                        var a = activities[i];
-                        var initials = string.Concat(a.User.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(p => p[0]));
-                        <div class="@(i < activities.Count - 1 ? "pb-3 mb-3 border-bottom" : string.Empty)">
-                            <div class="d-flex align-items-start gap-3">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-semibold" style="width:32px;height:32px;background:#1B4FD8;font-size:0.75rem;">
-                                    @initials
-                                </div>
-                                <div>
-                                    <p class="mb-0 fw-semibold" style="font-size:0.9rem;">@a.User</p>
-                                    <p class="mb-1 text-muted" style="font-size:0.8rem;">@a.Action - @a.Item</p>
-                                    <p class="mb-0 text-secondary" style="font-size:0.75rem;">@a.Time</p>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+else if (Model is AdministratorDashboardViewModel admin)
+{
+    <partial name="_AdministratorDashboard" model="admin" />
+}
+else if (Model is ManagerDashboardViewModel manager)
+{
+    <partial name="_ManagerDashboard" model="manager" />
+}
+else if (Model is StaffDashboardViewModel staff)
+{
+    <partial name="_StaffDashboard" model="staff" />
+}
+else if (Model is ExecutiveDashboardViewModel executive)
+{
+    <partial name="_ExecutiveDashboard" model="executive" />
+}

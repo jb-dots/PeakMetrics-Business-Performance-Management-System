@@ -1,0 +1,237 @@
+@model PeakMetrics.Web.ViewModels.StaffDashboardViewModel
+
+@if (!Model.HasDepartment)
+{
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card card-clean">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-building-x fs-1 d-block mb-3 text-muted opacity-50"></i>
+                    <h5 class="text-muted">No Department Assigned</h5>
+                    <p class="text-muted mb-0">You are not assigned to a department yet. Contact your administrator.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    var summaryCards = new[]
+    {
+        new { Title = "My KPIs",  Value = Model.MyKpis.ToString(),  Icon = "bi-bar-chart-line" },
+        new { Title = "On Track", Value = Model.OnTrack.ToString(),  Icon = "bi-graph-up-arrow" },
+        new { Title = "At Risk",  Value = Model.AtRisk.ToString(),   Icon = "bi-exclamation-circle" },
+        new { Title = "Behind",   Value = Model.Behind.ToString(),   Icon = "bi-graph-down-arrow" }
+    };
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        @foreach (var card in summaryCards)
+        {
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card card-clean h-100">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1 small">@card.Title</p>
+                            <h2 class="mb-0 fw-bold">@card.Value</h2>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center rounded-3"
+                             style="width:56px;height:56px;background:#EFF6FF;">
+                            <i class="bi @card.Icon" style="font-size:1.5rem;color:#1B4FD8;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- My KPI List -->
+        <div class="col-12 col-lg-8">
+            <div class="card card-clean">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">My KPIs</h5>
+                    @if (!Model.MyKpiList.Any())
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-bar-chart fs-1 d-block mb-2 opacity-25"></i>
+                            <p class="mb-0 small">No KPIs assigned to your department yet.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Perspective</th>
+                                        <th>Target</th>
+                                        <th>Actual</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var kpi in Model.MyKpiList)
+                                    {
+                                        var statusCss = kpi.Status switch
+                                        {
+                                            "On Track" => "status-ontrack",
+                                            "At Risk"  => "status-atrisk",
+                                            "Behind"   => "status-behind",
+                                            _          => "status-ontrack"
+                                        };
+                                        <tr>
+                                            <td class="fw-semibold">@kpi.Name</td>
+                                            <td class="text-muted small">@kpi.Perspective</td>
+                                            <td>@kpi.Target</td>
+                                            <td>@kpi.Actual</td>
+                                            <td><span class="status-badge @statusCss">@kpi.Status</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Due for Logging + Notifications -->
+        <div class="col-12 col-lg-4">
+            <div class="card card-clean mb-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Due for Logging</h5>
+                    @if (!Model.PendingKpiNames.Any())
+                    {
+                        <div class="d-flex align-items-center gap-2 text-success">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <p class="mb-0 small">All KPIs are up to date for this period.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var name in Model.PendingKpiNames)
+                            {
+                                <li class="d-flex align-items-center gap-2 py-1 border-bottom">
+                                    <i class="bi bi-clock text-warning"></i>
+                                    <span class="small">@name</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+
+            <div class="card card-clean">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-3"
+                         style="width:44px;height:44px;background:#EFF6FF;">
+                        <i class="bi bi-bell" style="font-size:1.2rem;color:#1B4FD8;"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted mb-0 small">Unread Notifications</p>
+                        <h4 class="mb-0 fw-bold">@Model.UnreadNotifications</h4>
+                    </div>
+                    <div class="ms-auto">
+                        <a asp-controller="Home" asp-action="Notifications" class="btn btn-sm btn-outline-primary">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- My Recent Logs -->
+        <div class="col-12 col-lg-6">
+            <div class="card card-clean">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">My Recent Logs</h5>
+                    @if (!Model.MyRecentLogs.Any())
+                    {
+                        <div class="text-center py-3 text-muted">
+                            <i class="bi bi-journal-text fs-1 d-block mb-2 opacity-25"></i>
+                            <p class="mb-0 small">No recent log entries.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>KPI</th>
+                                        <th>Actual</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var log in Model.MyRecentLogs)
+                                    {
+                                        var statusCss = log.Status switch
+                                        {
+                                            "On Track" => "status-ontrack",
+                                            "At Risk"  => "status-atrisk",
+                                            "Behind"   => "status-behind",
+                                            _          => "status-ontrack"
+                                        };
+                                        <tr>
+                                            <td class="fw-semibold">@log.KpiName</td>
+                                            <td>@log.ActualWithUnit</td>
+                                            <td><span class="status-badge @statusCss">@log.Status</span></td>
+                                            <td class="text-muted">@log.RelativeTime</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- My Scorecard -->
+        <div class="col-12 col-lg-6">
+            <div class="card card-clean">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">My Scorecard</h5>
+                    @if (!Model.Scorecard.Any())
+                    {
+                        <div class="text-center py-3 text-muted">
+                            <i class="bi bi-grid-3x3-gap fs-1 d-block mb-2 opacity-25"></i>
+                            <p class="mb-0 small">No scorecard data available.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Perspective</th>
+                                        <th class="text-center"><span class="status-badge status-ontrack">On Track</span></th>
+                                        <th class="text-center"><span class="status-badge status-atrisk">At Risk</span></th>
+                                        <th class="text-center"><span class="status-badge status-behind">Behind</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.Scorecard)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">@row.Perspective</td>
+                                            <td class="text-center">@row.OnTrack</td>
+                                            <td class="text-center">@row.AtRisk</td>
+                                            <td class="text-center">@row.Behind</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,197 @@
+@model PeakMetrics.Web.ViewModels.ManagerDashboardViewModel
+@using System.Text.Json
+
+@{
+    var summaryCards = new[]
+    {
+        new { Title = "Total KPIs", Value = Model.TotalKpis.ToString(), Icon = "bi-bar-chart-line", Css = "" },
+        new { Title = "On Track",   Value = Model.OnTrack.ToString(),   Icon = "bi-graph-up-arrow", Css = "status-ontrack" },
+        new { Title = "At Risk",    Value = Model.AtRisk.ToString(),    Icon = "bi-exclamation-circle", Css = "status-atrisk" },
+        new { Title = "Behind",     Value = Model.Behind.ToString(),    Icon = "bi-graph-down-arrow", Css = "status-behind" }
+    };
+
+    var barDatasets = new[]
+    {
+        new { label = "On Track", data = Model.DeptKpiStatuses.Select(d => d.OnTrack).ToList(), backgroundColor = "#22c55e" },
+        new { label = "At Risk",  data = Model.DeptKpiStatuses.Select(d => d.AtRisk).ToList(),  backgroundColor = "#f59e0b" },
+        new { label = "Behind",   data = Model.DeptKpiStatuses.Select(d => d.Behind).ToList(),  backgroundColor = "#ef4444" }
+    };
+
+    var trendDatasets = Model.TrendDatasets.Select((d, i) => new {
+        label = d.DepartmentName,
+        data = d.Values,
+        borderColor = new[]{"#1B4FD8","#22c55e","#f59e0b","#ef4444","#8b5cf6","#06b6d4"}[i % 6],
+        tension = 0.4,
+        spanGaps = false
+    }).ToList();
+}
+
+<!-- Summary Cards -->
+<div class="row g-4 mb-4">
+    @foreach (var card in summaryCards)
+    {
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card card-clean h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small">@card.Title</p>
+                        <h2 class="mb-0 fw-bold">@card.Value</h2>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center rounded-3"
+                         style="width:56px;height:56px;background:#EFF6FF;">
+                        <i class="bi @card.Icon" style="font-size:1.5rem;color:#1B4FD8;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+    <!-- KPI Status Bar Chart -->
+    <div class="col-12 col-lg-6">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">KPI Status by Department</h5>
+                <div class="canvas-wrap">
+                    <canvas id="managerBarChart"
+                            data-labels="@JsonSerializer.Serialize(Model.DeptKpiStatuses.Select(d => d.Department).ToList())"
+                            data-datasets="@JsonSerializer.Serialize(barDatasets)"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Trend Line Chart -->
+    <div class="col-12 col-lg-6">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">KPI Trend (Last 6 Months)</h5>
+                <div class="canvas-wrap">
+                    <canvas id="managerTrendChart"
+                            data-labels="@JsonSerializer.Serialize(Model.TrendLabels)"
+                            data-datasets="@JsonSerializer.Serialize(trendDatasets)"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Strategic Goals -->
+    <div class="col-12 col-lg-7">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Strategic Goals Progress</h5>
+                @if (!Model.ActiveGoals.Any())
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-lightbulb fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No active strategic goals.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Perspective</th>
+                                    <th>Status</th>
+                                    <th>Due Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var goal in Model.ActiveGoals)
+                                {
+                                    var statusCss = goal.Status switch
+                                    {
+                                        "On Track"    => "status-ontrack",
+                                        "At Risk"     => "status-atrisk",
+                                        "Behind"      => "status-behind",
+                                        _             => "status-ontrack"
+                                    };
+                                    <tr>
+                                        <td class="fw-semibold">@goal.Title</td>
+                                        <td class="text-muted small">@goal.Perspective</td>
+                                        <td><span class="status-badge @statusCss">@goal.Status</span></td>
+                                        <td class="text-muted small">@(goal.DueDate ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent KPI Logs + Notifications -->
+    <div class="col-12 col-lg-5">
+        <div class="card card-clean mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Recent KPI Logs</h5>
+                @if (!Model.RecentLogs.Any())
+                {
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-journal-text fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No recent log entries.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>KPI</th>
+                                    <th>Logged By</th>
+                                    <th>Actual</th>
+                                    <th>Status</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in Model.RecentLogs)
+                                {
+                                    var statusCss = log.Status switch
+                                    {
+                                        "On Track" => "status-ontrack",
+                                        "At Risk"  => "status-atrisk",
+                                        "Behind"   => "status-behind",
+                                        _          => "status-ontrack"
+                                    };
+                                    <tr>
+                                        <td class="fw-semibold">@log.KpiName</td>
+                                        <td class="text-muted">@log.LoggedBy</td>
+                                        <td>@log.ActualWithUnit</td>
+                                        <td><span class="status-badge @statusCss">@log.Status</span></td>
+                                        <td class="text-muted">@log.RelativeTime</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card card-clean">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center justify-content-center rounded-3"
+                     style="width:44px;height:44px;background:#EFF6FF;">
+                    <i class="bi bi-bell" style="font-size:1.2rem;color:#1B4FD8;"></i>
+                </div>
+                <div>
+                    <p class="text-muted mb-0 small">Unread Notifications</p>
+                    <h4 class="mb-0 fw-bold">@Model.UnreadNotifications</h4>
+                </div>
+                <div class="ms-auto">
+                    <a asp-controller="Home" asp-action="Notifications" class="btn btn-sm btn-outline-primary">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

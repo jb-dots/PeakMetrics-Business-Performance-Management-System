@@ -1,60 +1,135 @@
+@model PeakMetrics.Web.ViewModels.PerformanceAnalyticsViewModel
+@using System.Text.Json
+
+@{
+    var trendDatasets = Model.TrendDatasets.Select((d, i) => new {
+        label       = d.DepartmentName,
+        data        = d.Values,
+        borderColor = new[]{"#1B4FD8","#0891b2","#7c3aed","#059669","#f59e0b","#ef4444"}[i % 6],
+        tension     = 0.4,
+        spanGaps    = false,
+        fill         = false
+    }).ToList();
+
+    var barDatasets = new[] { new {
+        label           = "Performance Score (%)",
+        data            = Model.BarScores,
+        backgroundColor = Model.BarLabels.Select((_, i) =>
+            new[]{"#1B4FD8","#0891b2","#7c3aed","#059669","#f59e0b","#ef4444"}[i % 6]).ToList()
+    }};
+
+    var doughnutDatasets = new[] { new {
+        data            = new[] { Model.DoughnutOnTrack, Model.DoughnutAtRisk, Model.DoughnutBehind },
+        backgroundColor = new[] { "#22c55e", "#f59e0b", "#ef4444" }
+    }};
+
+    var hasData = Model.TrendDatasets.Any() || Model.BarLabels.Any() || (Model.DoughnutOnTrack + Model.DoughnutAtRisk + Model.DoughnutBehind) > 0;
+}
+
+<!-- Filters -->
 <div class="card card-clean mb-4">
     <div class="card-body">
-        <div class="row g-3 align-items-end">
+        <form method="get" asp-controller="Home" asp-action="PerformanceAnalytics" class="row g-3 align-items-end">
             <div class="col-12 col-md-4">
                 <label class="form-label fw-semibold small">Time Range</label>
-                <select class="form-select">
-                    <option>Last 3 Months</option>
-                    <option selected>Last 6 Months</option>
-                    <option>Last Year</option>
-                    <option>Year to Date</option>
+                <select class="form-select" name="months">
+                    <option value="3"  selected="@(Model.SelectedMonths == 3  ? "selected" : null)">Last 3 Months</option>
+                    <option value="6"  selected="@(Model.SelectedMonths == 6  ? "selected" : null)">Last 6 Months</option>
+                    <option value="12" selected="@(Model.SelectedMonths == 12 ? "selected" : null)">Last 12 Months</option>
                 </select>
             </div>
             <div class="col-12 col-md-4">
                 <label class="form-label fw-semibold small">Department</label>
-                <select class="form-select">
-                    <option selected>All</option>
-                    <option>Finance</option>
-                    <option>Sales</option>
-                    <option>HR</option>
-                    <option>Operations</option>
-                    <option>Customer Service</option>
-                    <option>Quality</option>
+                <select class="form-select" name="department">
+                    <option value="All" selected="@(Model.SelectedDepartment == "All" ? "selected" : null)">All Departments</option>
+                    @foreach (var dept in Model.Departments)
+                    {
+                        <option value="@dept" selected="@(Model.SelectedDepartment == dept ? "selected" : null)">@dept</option>
+                    }
                 </select>
             </div>
             <div class="col-12 col-md-4">
-                <button class="btn btn-primary-custom w-100">Apply Filters</button>
+                <button type="submit" class="btn btn-primary-custom w-100">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (!hasData)
+{
+    <div class="card card-clean">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-bar-chart fs-1 d-block mb-3 opacity-25"></i>
+            <h5 class="fw-semibold">No analytics data yet</h5>
+            <p class="mb-3 small">Log KPI entries to generate performance charts and trends.</p>
+            <a asp-controller="Home" asp-action="KPILogEntry" class="btn btn-primary-custom btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Log KPI Entry
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Trend line chart -->
+    <div class="card card-clean mb-4">
+        <div class="card-body p-4">
+            <h5 class="card-title mb-3">KPI Trend by Perspective</h5>
+            @if (!Model.TrendDatasets.Any())
+            {
+                <p class="text-muted small">No trend data for the selected period.</p>
+            }
+            else
+            {
+                <div class="canvas-wrap-lg">
+                    <canvas id="performanceLineChart"
+                            data-labels="@JsonSerializer.Serialize(Model.TrendLabels)"
+                            data-datasets="@JsonSerializer.Serialize(trendDatasets)"></canvas>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Bar chart -->
+        <div class="col-12 col-lg-7">
+            <div class="card card-clean">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3">Department Performance Scores</h5>
+                    @if (!Model.BarLabels.Any())
+                    {
+                        <p class="text-muted small">No department data available.</p>
+                    }
+                    else
+                    {
+                        <div class="canvas-wrap">
+                            <canvas id="performanceBarChart"
+                                    data-labels="@JsonSerializer.Serialize(Model.BarLabels)"
+                                    data-datasets="@JsonSerializer.Serialize(barDatasets)"></canvas>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="card card-clean mb-4">
-    <div class="card-body p-4">
-        <div class="canvas-wrap-lg">
-            <canvas id="performanceLineChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<div class="row g-4">
-    <div class="col-12 col-lg-7">
-        <div class="card card-clean">
-            <div class="card-body p-4">
-                <div class="canvas-wrap">
-                    <canvas id="performanceBarChart"></canvas>
+        <!-- Doughnut chart -->
+        <div class="col-12 col-lg-5">
+            <div class="card card-clean">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3">KPI Status Distribution</h5>
+                    @if (Model.DoughnutOnTrack + Model.DoughnutAtRisk + Model.DoughnutBehind == 0)
+                    {
+                        <p class="text-muted small">No status data available.</p>
+                    }
+                    else
+                    {
+                        <div class="canvas-wrap">
+                            <canvas id="performanceDoughnutChart"
+                                    data-labels="@JsonSerializer.Serialize(new[]{"On Track","At Risk","Behind"})"
+                                    data-datasets="@JsonSerializer.Serialize(doughnutDatasets)"></canvas>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="col-12 col-lg-5">
-        <div class="card card-clean">
-            <div class="card-body p-4">
-                <div class="canvas-wrap">
-                    <canvas id="performanceDoughnutChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+}

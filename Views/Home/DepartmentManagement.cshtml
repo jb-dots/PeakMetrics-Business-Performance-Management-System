@@ -1,15 +1,18 @@
-@{
-    var departments = new[]
-    {
-        new { Name = "Finance", Description = "Financial planning, accounting, and reporting", Users = 12, Kpis = 8, DateCreated = "Jan 15, 2024" },
-        new { Name = "Sales", Description = "Sales operations, customer acquisition, and revenue generation", Users = 25, Kpis = 10, DateCreated = "Jan 15, 2024" },
-        new { Name = "Human Resources", Description = "Talent management, recruitment, and employee development", Users = 8, Kpis = 6, DateCreated = "Jan 20, 2024" },
-        new { Name = "Operations", Description = "Process management, supply chain, and logistics", Users = 18, Kpis = 9, DateCreated = "Feb 01, 2024" },
-        new { Name = "Customer Service", Description = "Customer support, satisfaction, and relationship management", Users = 15, Kpis = 7, DateCreated = "Feb 10, 2024" },
-        new { Name = "Quality Assurance", Description = "Quality control, testing, and continuous improvement", Users = 10, Kpis = 5, DateCreated = "Mar 05, 2024" },
-        new { Name = "Marketing", Description = "Brand management, campaigns, and market research", Users = 14, Kpis = 8, DateCreated = "Mar 12, 2024" },
-        new { Name = "IT & Technology", Description = "Infrastructure, software development, and technical support", Users = 20, Kpis = 6, DateCreated = "Mar 20, 2024" }
-    };
+@model PeakMetrics.Web.ViewModels.DepartmentManagementViewModel
+
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@Html.Raw(successMsg)</span>
+    </div>
+}
+@if (TempData["ErrorMessage"] is string errorMsg)
+{
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>@Html.Raw(errorMsg)</span>
+    </div>
 }
 
 <div class="card card-clean mb-4">
@@ -22,7 +25,10 @@
                 </div>
             </div>
             <div class="col-12 col-md-4">
-                <button class="btn btn-primary-custom w-100"><i class="bi bi-plus-lg me-2"></i>Add Department</button>
+                <a asp-controller="Home" asp-action="DepartmentCreate"
+                   class="btn btn-primary-custom w-100 d-inline-flex align-items-center justify-content-center gap-2">
+                    <i class="bi bi-plus-lg"></i> Add Department
+                </a>
             </div>
         </div>
     </div>
@@ -30,38 +36,118 @@
 
 <div class="card card-clean">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0" id="departmentTable">
-                <thead>
-                    <tr>
-                        <th>Department Name</th>
-                        <th>Description</th>
-                        <th class="text-center">Users</th>
-                        <th class="text-center">KPIs</th>
-                        <th>Date Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var dept in departments)
-                    {
-                        <tr data-search="@($"{dept.Name} {dept.Description}")">
-                            <td class="fw-semibold">@dept.Name</td>
-                            <td class="text-muted">@dept.Description</td>
-                            <td class="text-center"><span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width:32px;height:32px;background:#eff6ff;color:#1B4FD8;">@dept.Users</span></td>
-                            <td class="text-center"><span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold" style="width:32px;height:32px;background:#eff6ff;color:#1B4FD8;font-size:0.875rem;">@dept.Kpis</span></td>
-                            <td class="text-muted">@dept.DateCreated</td>
-                            <td>
-                                <button class="btn btn-sm text-primary">Edit</button>
-                                <button class="btn btn-sm text-muted">View</button>
-                            </td>
+        @if (!Model.Departments.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-building fs-1 d-block mb-3 opacity-25"></i>
+                <h5 class="fw-semibold">No departments yet</h5>
+                <p class="mb-3 small">Add your first department to start organizing users and KPIs.</p>
+                <a asp-controller="Home" asp-action="DepartmentCreate" class="btn btn-primary-custom btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i> Add Department
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="departmentTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Department Name</th>
+                            <th>Description</th>
+                            <th class="text-center">Users</th>
+                            <th class="text-center">Active KPIs</th>
+                            <th>Created</th>
+                            <th class="text-end">Actions</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-        <div id="noDepartmentResults" class="text-center text-muted py-5" style="display:none;">
-            No departments found matching your search.
+                    </thead>
+                    <tbody>
+                        @foreach (var dept in Model.Departments)
+                        {
+                            <tr data-search="@($"{dept.Name} {dept.Description}")">
+                                <td class="fw-semibold">@dept.Name</td>
+                                <td class="text-muted small">@(dept.Description ?? "—")</td>
+                                <td class="text-center">
+                                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold"
+                                          style="width:32px;height:32px;background:#eff6ff;color:#1B4FD8;font-size:0.85rem;">
+                                        @dept.UserCount
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-semibold"
+                                          style="width:32px;height:32px;background:#eff6ff;color:#1B4FD8;font-size:0.85rem;">
+                                        @dept.KpiCount
+                                    </span>
+                                </td>
+                                <td class="text-muted small">@dept.CreatedAt</td>
+                                <td class="text-end">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <a asp-controller="Home" asp-action="DepartmentEdit" asp-route-id="@dept.Id"
+                                           class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        @if (dept.UserCount == 0 && dept.KpiCount == 0)
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    title="Delete"
+                                                    data-dept-id="@dept.Id"
+                                                    data-dept-name="@dept.Name"
+                                                    onclick="confirmDeleteDept(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                    title="Cannot delete — has users or KPIs assigned" disabled>
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div id="noDepartmentResults" class="text-center text-muted py-4" style="display:none;">
+                No departments found matching your search.
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteDeptModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content logout-modal-content">
+            <div class="logout-modal-icon" style="background:#fef2f2;">
+                <i class="bi bi-trash" style="color:#ef4444;"></i>
+            </div>
+            <h5 class="logout-modal-title">Delete Department?</h5>
+            <p class="logout-modal-body">
+                Delete <strong id="deleteDeptName"></strong>? This cannot be undone.
+            </p>
+            <div class="logout-modal-actions">
+                <button type="button" class="btn logout-cancel-btn" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteDeptForm" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn logout-confirm-btn">Delete</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+function confirmDeleteDept(btn) {
+    var id   = btn.getAttribute('data-dept-id');
+    var name = btn.getAttribute('data-dept-name');
+    document.getElementById('deleteDeptName').textContent = name;
+    document.getElementById('deleteDeptForm').action = '/Home/DepartmentDelete/' + id;
+    new bootstrap.Modal(document.getElementById('deleteDeptModal')).show();
+}
+</script>
+}

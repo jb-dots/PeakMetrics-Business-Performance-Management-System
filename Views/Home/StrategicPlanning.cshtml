@@ -1,88 +1,107 @@
+@model PeakMetrics.Web.ViewModels.StrategicPlanningViewModel
 @{
-    var goals = new[]
-    {
-        new {
-            Title = "Digital Transformation Initiative",
-            Description = "Modernize core business systems and implement cloud-based solutions to improve operational efficiency and data accessibility.",
-            TargetYear = "2027",
-            Status = "On Track",
-            Progress = 65,
-            LinkedKpis = new[] { "Process Cycle Time", "Innovation Index", "Process Efficiency" }
-        },
-        new {
-            Title = "Market Expansion Strategy",
-            Description = "Enter three new geographical markets and increase overall market share by 10% through targeted marketing and strategic partnerships.",
-            TargetYear = "2026",
-            Status = "On Track",
-            Progress = 78,
-            LinkedKpis = new[] { "Market Share", "Revenue Growth Rate", "Customer Acquisition" }
-        },
-        new {
-            Title = "Customer Experience Excellence",
-            Description = "Achieve industry-leading customer satisfaction scores through enhanced service delivery, personalized engagement, and faster response times.",
-            TargetYear = "2026",
-            Status = "At Risk",
-            Progress = 55,
-            LinkedKpis = new[] { "Customer Satisfaction Score", "Customer Retention Rate", "Net Promoter Score" }
-        },
-        new {
-            Title = "Operational Excellence Program",
-            Description = "Reduce operational costs by 15% while improving quality and delivery times through lean methodologies and process optimization.",
-            TargetYear = "2027",
-            Status = "Behind",
-            Progress = 35,
-            LinkedKpis = new[] { "Defect Rate", "On-time Delivery", "Process Cycle Time" }
-        }
-    };
+    var role       = ViewData["SessionUserRole"]?.ToString() ?? string.Empty;
+    var canManage  = role is "Admin" or "Manager";
 }
 
-<div class="row g-4">
-    @foreach (var goal in goals)
-    {
-        var statusClass = goal.Status == "On Track"
-            ? "status-badge status-ontrack"
-            : goal.Status == "At Risk"
-                ? "status-badge status-atrisk"
-                : "status-badge status-behind";
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@Html.Raw(successMsg)</span>
+    </div>
+}
 
-        var progressColor = goal.Progress >= 70 ? "#1B4FD8" : goal.Progress >= 40 ? "#60a5fa" : "#93c5fd";
+@if (canManage)
+{
+    <div class="d-flex justify-content-end mb-4">
+        <a asp-controller="Home" asp-action="StrategicGoalCreate"
+           class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
+            <i class="bi bi-plus-lg"></i> Add Strategic Goal
+        </a>
+    </div>
+}
 
-        <div class="col-12 col-lg-6">
-            <div class="card card-clean h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                        <div>
-                            <h5 class="mb-2 fw-semibold">@goal.Title</h5>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="small text-muted"><i class="bi bi-bullseye"></i> Target: @goal.TargetYear</span>
-                                <span class="@statusClass">@goal.Status</span>
+@if (!Model.Goals.Any())
+{
+    <div class="card card-clean">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-lightbulb fs-1 d-block mb-3 opacity-25"></i>
+            <h5 class="fw-semibold">No strategic goals yet</h5>
+            <p class="mb-3 small">Define strategic goals to track your organisation's long-term direction.</p>
+            @if (canManage)
+            {
+                <a asp-controller="Home" asp-action="StrategicGoalCreate" class="btn btn-primary-custom btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i> Add First Goal
+                </a>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var goal in Model.Goals)
+        {
+            var statusCss = goal.Status switch
+            {
+                "In Progress"  => "status-badge status-ontrack",
+                "Completed"    => "status-badge status-ontrack",
+                "Not Started"  => "status-badge bg-light text-secondary border",
+                "Cancelled"    => "status-badge bg-light text-secondary border",
+                _              => "status-badge bg-light text-secondary border"
+            };
+
+            var perspectiveColor = goal.Perspective switch
+            {
+                "Financial"         => "#1B4FD8",
+                "Customer"          => "#0891b2",
+                "Internal Process"  => "#7c3aed",
+                "Learning & Growth" => "#059669",
+                _                   => "#64748b"
+            };
+
+            <div class="col-12 col-lg-6">
+                <div class="card card-clean h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                            <div class="min-width-0 flex-grow-1">
+                                <h5 class="mb-2 fw-semibold">@goal.Title</h5>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="badge rounded-pill"
+                                          style="background:@(perspectiveColor)22;color:@perspectiveColor;font-size:0.75rem;">
+                                        @goal.Perspective
+                                    </span>
+                                    <span class="@statusCss">@goal.Status</span>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <p class="text-muted" style="font-size:0.9rem;">@goal.Description</p>
-
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small fw-semibold">Progress</span>
-                            <span class="small fw-bold" style="color:@progressColor;">@goal.Progress%</span>
-                        </div>
-                        <div class="progress" style="height:8px;">
-                            <div class="progress-bar" role="progressbar" style="width:@(goal.Progress)%;background:@progressColor;" aria-valuenow="@goal.Progress" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="small fw-semibold mb-2"><i class="bi bi-graph-up"></i> Linked KPIs</div>
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach (var kpi in goal.LinkedKpis)
+                            @if (canManage)
                             {
-                                <span class="badge rounded-pill" style="background:#eff6ff;color:#1B4FD8;">@kpi</span>
+                                <a asp-controller="Home" asp-action="StrategicGoalEdit" asp-route-id="@goal.Id"
+                                   class="btn btn-sm btn-outline-secondary flex-shrink-0" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(goal.Description))
+                        {
+                            <p class="text-muted mb-3" style="font-size:0.88rem;">@goal.Description</p>
+                        }
+
+                        <div class="d-flex flex-wrap gap-3 small text-muted">
+                            @if (!string.IsNullOrWhiteSpace(goal.DueDate))
+                            {
+                                <span><i class="bi bi-calendar3 me-1"></i>Due: @goal.DueDate</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(goal.OwnerName))
+                            {
+                                <span><i class="bi bi-person me-1"></i>@goal.OwnerName</span>
                             }
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    }
-</div>
+        }
+    </div>
+}

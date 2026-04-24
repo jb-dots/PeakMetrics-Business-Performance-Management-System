@@ -1,70 +1,75 @@
+@model PeakMetrics.Web.ViewModels.BalancedScorecardViewModel
+
 @{
-    var perspectives = new[]
+    var perspectiveColors = new Dictionary<string, string>
     {
-        new {
-            Title = "Financial", Color = "#1B4FD8", Kpis = new[]
-            {
-                new { Name = "Revenue Growth Rate", Target = "15%", Actual = "17.2%", Status = "On Track" },
-                new { Name = "Net Profit Margin", Target = "12%", Actual = "13.5%", Status = "On Track" },
-                new { Name = "Operating Cash Flow", Target = "$5M", Actual = "$5.8M", Status = "On Track" }
-            }
-        },
-        new {
-            Title = "Customer", Color = "#3b82f6", Kpis = new[]
-            {
-                new { Name = "Customer Satisfaction Score", Target = "4.5/5", Actual = "4.7/5", Status = "On Track" },
-                new { Name = "Customer Retention Rate", Target = "85%", Actual = "87%", Status = "On Track" },
-                new { Name = "Net Promoter Score", Target = "50", Actual = "52", Status = "On Track" }
-            }
-        },
-        new {
-            Title = "Internal Process", Color = "#60a5fa", Kpis = new[]
-            {
-                new { Name = "Process Cycle Time", Target = "3 days", Actual = "5 days", Status = "Behind" },
-                new { Name = "Defect Rate", Target = "< 2%", Actual = "3.2%", Status = "At Risk" },
-                new { Name = "On-Time Delivery", Target = "95%", Actual = "92%", Status = "At Risk" }
-            }
-        },
-        new {
-            Title = "Learning & Growth", Color = "#93c5fd", Kpis = new[]
-            {
-                new { Name = "Employee Turnover Rate", Target = "< 10%", Actual = "12.5%", Status = "At Risk" },
-                new { Name = "Training Hours per Employee", Target = "40 hrs", Actual = "38 hrs", Status = "At Risk" },
-                new { Name = "Employee Satisfaction", Target = "4.0/5", Actual = "4.2/5", Status = "On Track" }
-            }
-        }
+        ["Financial"]        = "#1B4FD8",
+        ["Customer"]         = "#0891b2",
+        ["Internal Process"] = "#7c3aed",
+        ["Learning & Growth"]= "#059669"
     };
 }
 
-<div class="row g-4">
-    @foreach (var perspective in perspectives)
-    {
-        <div class="col-12 col-lg-6">
-            <div class="card card-clean h-100 overflow-hidden">
-                <div class="text-white fw-semibold" style="background:@perspective.Color;padding:1.25rem 1.5rem;font-size:1.125rem;">
-                    @perspective.Title
-                </div>
-                <div class="card-body p-4 d-flex flex-column gap-3">
-                    @foreach (var kpi in perspective.Kpis)
-                    {
-                        var statusClass = kpi.Status == "On Track"
-                            ? "status-badge status-ontrack"
-                            : kpi.Status == "At Risk"
-                                ? "status-badge status-atrisk"
-                                : "status-badge status-behind";
-                        <div class="border rounded-3 p-3" style="background:#f9fafb;">
-                            <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
-                                <h6 class="mb-0 fw-semibold" style="font-size:0.9rem;">@kpi.Name</h6>
-                                <span class="@statusClass">@kpi.Status</span>
-                            </div>
-                            <div class="d-flex gap-4" style="font-size:0.875rem;">
-                                <div><span class="text-muted">Target: </span><span class="fw-semibold">@kpi.Target</span></div>
-                                <div><span class="text-muted">Actual: </span><span class="fw-bold">@kpi.Actual</span></div>
-                            </div>
-                        </div>
-                    }
+@if (!Model.Perspectives.Any())
+{
+    <div class="card card-clean">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-grid-3x3-gap fs-1 d-block mb-3 opacity-25"></i>
+            <h5 class="fw-semibold">No scorecard data yet</h5>
+            <p class="mb-3 small">KPIs are defined but no actual values have been logged yet.</p>
+            <a asp-controller="Home" asp-action="KPILogEntry" class="btn btn-primary-custom btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Log First Entry
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var group in Model.Perspectives)
+        {
+            var color = perspectiveColors.TryGetValue(group.Perspective, out var c) ? c : "#1B4FD8";
+            <div class="col-12 col-lg-6">
+                <div class="card card-clean h-100 overflow-hidden">
+                    <div class="text-white fw-semibold d-flex align-items-center gap-2"
+                         style="background:@color;padding:1rem 1.5rem;font-size:1rem;">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                        @group.Perspective
+                        <span class="ms-auto badge bg-white bg-opacity-25 rounded-pill" style="font-size:0.75rem;">
+                            @group.Kpis.Count KPI@(group.Kpis.Count == 1 ? "" : "s")
+                        </span>
+                    </div>
+                    <div class="card-body p-4 d-flex flex-column gap-3">
+                        @if (!group.Kpis.Any())
+                        {
+                            <p class="text-muted small mb-0">No KPIs in this perspective.</p>
+                        }
+                        else
+                        {
+                            @foreach (var kpi in group.Kpis)
+                            {
+                                var statusCss = kpi.Status switch
+                                {
+                                    "On Track" => "status-badge status-ontrack",
+                                    "At Risk"  => "status-badge status-atrisk",
+                                    "Behind"   => "status-badge status-behind",
+                                    _          => "status-badge bg-light text-secondary border"
+                                };
+                                <div class="border rounded-3 p-3" style="background:#f9fafb;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                                        <h6 class="mb-0 fw-semibold" style="font-size:0.88rem;">@kpi.Name</h6>
+                                        <span class="@statusCss flex-shrink-0">@kpi.Status</span>
+                                    </div>
+                                    <div class="d-flex gap-4" style="font-size:0.82rem;">
+                                        <div><span class="text-muted">Target: </span><span class="fw-semibold">@kpi.Target</span></div>
+                                        <div><span class="text-muted">Actual: </span><span class="fw-bold">@kpi.Actual</span></div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
                 </div>
             </div>
-        </div>
-    }
-</div>
+        }
+    </div>
+}

@@ -1,16 +1,17 @@
 @model KpiTrackingPageViewModel
-
 @{
     var kpis = Model?.Kpis ?? Array.Empty<KpiTrackingItemViewModel>();
+    var role = ViewData["SessionUserRole"]?.ToString() ?? string.Empty;
+    var canManage = role is "Admin" or "Administrator" or "Manager";
 }
 
-<div class="alert @(Model?.IsFallback == true ? "alert-warning" : "alert-primary") d-flex justify-content-between align-items-center gap-2 mb-4">
-    <span>@(Model?.DataMessage ?? "Live KPI feed initialized.")</span>
-    @if (Model?.IsFallback == true)
-    {
-        <a asp-controller="Home" asp-action="KPITracking" asp-route-refresh="true" class="btn btn-sm btn-outline-warning api-retry-btn">Retry Sync</a>
-    }
-</div>
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@Html.Raw(successMsg)</span>
+    </div>
+}
 
 <div class="card card-clean mb-4">
     <div class="card-body">
@@ -19,43 +20,53 @@
                 <i class="bi bi-funnel text-muted"></i>
                 <h6 class="mb-0 fw-semibold">Filters</h6>
             </div>
-            <a asp-controller="Home" asp-action="KPILogEntry" class="btn btn-sm btn-primary-custom d-inline-flex align-items-center gap-2">
-                <i class="bi bi-plus-lg"></i>
-                Log Entry
-            </a>
+            <div class="d-flex gap-2">
+                @if (canManage)
+                {
+                    <a asp-controller="Home" asp-action="KpiCreate"
+                       class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-plus-lg"></i> New KPI
+                    </a>
+                }
+                <a asp-controller="Home" asp-action="KPILogEntry"
+                   class="btn btn-sm btn-primary-custom d-inline-flex align-items-center gap-1">
+                    <i class="bi bi-pencil-square"></i> Log Entry
+                </a>
+            </div>
         </div>
-        <form method="get" asp-controller="Home" asp-action="KPITracking" class="row g-3" id="kpiServerFilterForm">
+        <form method="get" asp-controller="Home" asp-action="KPITracking" class="row g-3">
             <div class="col-12 col-md-3">
                 <label class="form-label fw-semibold small">Department</label>
-                <select class="form-select" id="kpiDepartmentFilter" name="department">
+                <select class="form-select" name="department">
                     <option value="All" selected="@(Model?.SelectedDepartment == "All" ? "selected" : null)">All</option>
-                    @foreach (var department in Model?.Departments ?? Array.Empty<string>())
+                    @foreach (var dept in Model?.Departments ?? Array.Empty<string>())
                     {
-                        <option value="@department" selected="@(Model?.SelectedDepartment == department ? "selected" : null)">@department</option>
+                        <option value="@dept" selected="@(Model?.SelectedDepartment == dept ? "selected" : null)">@dept</option>
                     }
                 </select>
             </div>
             <div class="col-12 col-md-3">
                 <label class="form-label fw-semibold small">Perspective</label>
-                <select class="form-select" id="kpiPerspectiveFilter" name="perspective">
+                <select class="form-select" name="perspective">
                     <option value="All" selected="@(Model?.SelectedPerspective == "All" ? "selected" : null)">All</option>
-                    @foreach (var perspective in Model?.Perspectives ?? Array.Empty<string>())
+                    @foreach (var persp in Model?.Perspectives ?? Array.Empty<string>())
                     {
-                        <option value="@perspective" selected="@(Model?.SelectedPerspective == perspective ? "selected" : null)">@perspective</option>
+                        <option value="@persp" selected="@(Model?.SelectedPerspective == persp ? "selected" : null)">@persp</option>
                     }
                 </select>
             </div>
             <div class="col-12 col-md-3">
                 <label class="form-label fw-semibold small">Status</label>
-                <select class="form-select" id="kpiStatusFilter" name="status">
-                    <option value="All" selected="@(Model?.SelectedStatus == "All" ? "selected" : null)">All</option>
+                <select class="form-select" name="status">
+                    <option value="All"      selected="@(Model?.SelectedStatus == "All"      ? "selected" : null)">All</option>
                     <option value="On Track" selected="@(Model?.SelectedStatus == "On Track" ? "selected" : null)">On Track</option>
-                    <option value="At Risk" selected="@(Model?.SelectedStatus == "At Risk" ? "selected" : null)">At Risk</option>
-                    <option value="Behind" selected="@(Model?.SelectedStatus == "Behind" ? "selected" : null)">Behind</option>
+                    <option value="At Risk"  selected="@(Model?.SelectedStatus == "At Risk"  ? "selected" : null)">At Risk</option>
+                    <option value="Behind"   selected="@(Model?.SelectedStatus == "Behind"   ? "selected" : null)">Behind</option>
+                    <option value="No Data"  selected="@(Model?.SelectedStatus == "No Data"  ? "selected" : null)">No Data</option>
                 </select>
             </div>
             <div class="col-12 col-md-3 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary-custom w-100">Apply Filters</button>
+                <button type="submit" class="btn btn-primary-custom w-100">Apply</button>
                 <a asp-controller="Home" asp-action="KPITracking" class="btn btn-outline-secondary">Reset</a>
             </div>
         </form>
@@ -64,53 +75,79 @@
 
 <div class="card card-clean">
     <div class="card-body">
-        <div class="table-responsive table-scrollable">
-            <table class="table table-hover mb-0" id="kpiTrackingTable">
-                <thead>
-                    <tr>
-                        <th class="table-sortable" data-sort-type="text">KPI Name</th>
-                        <th class="table-sortable" data-sort-type="text">Department</th>
-                        <th class="table-sortable" data-sort-type="text">Perspective</th>
-                        <th class="table-sortable" data-sort-type="text">Target Value</th>
-                        <th class="table-sortable" data-sort-type="text">Actual Value</th>
-                        <th class="table-sortable" data-sort-type="text">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var kpi in kpis)
-                    {
-                        var statusClass = kpi.Severity == AlertSeverity.Critical
-                            ? "status-badge status-behind"
-                            : kpi.Severity == AlertSeverity.Warning
-                                ? "status-badge status-atrisk"
-                                : "status-badge status-ontrack";
-                        <tr data-department="@kpi.Department" data-perspective="@kpi.Perspective" data-status="@kpi.Status">
-                            <td class="fw-semibold">@kpi.Name</td>
-                            <td>@kpi.Department</td>
-                            <td>@kpi.Perspective</td>
-                            <td>@kpi.Target</td>
-                            <td class="fw-semibold">@kpi.Actual</td>
-                            <td><span class="@statusClass">@kpi.Status</span></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-        <div class="table-footer-meta">
-            <div class="table-footer-tools">
-                <label for="kpiPageSize" class="small text-muted mb-0">Rows</label>
-                <select class="form-select form-select-sm table-page-size-select" id="kpiPageSize" aria-label="Rows per page for KPI table">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                </select>
-                <div class="btn-group btn-group-sm table-density-toggle" id="kpiDensityToggle" role="group" aria-label="KPI table density">
-                    <button type="button" class="btn btn-outline-secondary active" data-density="comfortable">Comfortable</button>
-                    <button type="button" class="btn btn-outline-secondary" data-density="compact">Compact</button>
-                </div>
+        @if (!kpis.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-bullseye fs-1 d-block mb-3 opacity-25"></i>
+                <h6 class="fw-semibold">No KPI entries yet</h6>
+                <p class="mb-3 small">KPIs are set up in the database. Log actual values to see them tracked here.</p>
+                <a asp-controller="Home" asp-action="KPILogEntry" class="btn btn-primary-custom btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i> Log First Entry
+                </a>
             </div>
-            <small class="text-muted" id="kpiTableSummary"></small>
-            <div class="table-pagination" id="kpiTablePagination"></div>
-        </div>
+        }
+        else
+        {
+            <div class="table-responsive table-scrollable">
+                <table class="table table-hover mb-0" id="kpiTrackingTable">
+                    <thead>
+                        <tr>
+                            <th class="table-sortable" data-sort-type="text">KPI Name</th>
+                            <th class="table-sortable" data-sort-type="text">Department</th>
+                            <th class="table-sortable" data-sort-type="text">Perspective</th>
+                            <th class="table-sortable" data-sort-type="text">Target</th>
+                            <th class="table-sortable" data-sort-type="text">Actual</th>
+                            <th class="table-sortable" data-sort-type="text">Status</th>
+                            @if (canManage)
+                            {
+                                <th class="text-end">Actions</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var kpi in kpis)
+                        {
+                            var statusClass = kpi.Severity == AlertSeverity.Critical ? "status-badge status-behind"
+                                            : kpi.Severity == AlertSeverity.Warning  ? "status-badge status-atrisk"
+                                            : kpi.Status == "No Data"                ? "status-badge bg-light text-secondary"
+                                            : "status-badge status-ontrack";
+                            <tr>
+                                <td class="fw-semibold">@kpi.Name</td>
+                                <td>@kpi.Department</td>
+                                <td>@kpi.Perspective</td>
+                                <td>@kpi.Target</td>
+                                <td class="fw-semibold">@kpi.Actual</td>
+                                <td><span class="@statusClass">@kpi.Status</span></td>
+                                @if (canManage)
+                                {
+                                    <td class="text-end">
+                                        <a asp-controller="Home" asp-action="KPILogEntry"
+                                           class="btn btn-sm btn-outline-primary" title="Log entry">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-footer-meta">
+                <div class="table-footer-tools">
+                    <label for="kpiPageSize" class="small text-muted mb-0">Rows</label>
+                    <select class="form-select form-select-sm table-page-size-select" id="kpiPageSize">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                    </select>
+                    <div class="btn-group btn-group-sm table-density-toggle" id="kpiDensityToggle" role="group">
+                        <button type="button" class="btn btn-outline-secondary active" data-density="comfortable">Comfortable</button>
+                        <button type="button" class="btn btn-outline-secondary" data-density="compact">Compact</button>
+                    </div>
+                </div>
+                <small class="text-muted" id="kpiTableSummary"></small>
+                <div class="table-pagination" id="kpiTablePagination"></div>
+            </div>
+        }
     </div>
 </div>

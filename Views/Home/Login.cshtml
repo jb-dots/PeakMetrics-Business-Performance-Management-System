@@ -1,3 +1,4 @@
+@model PeakMetrics.Web.ViewModels.LoginViewModel
 @{
     Layout = null;
     ViewData["Title"] = "Login";
@@ -15,353 +16,282 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
     <style>
-        :root {
-            --pm-left-start: #3b5af5;
-            --pm-left-end: #2d3fd4;
-            --pm-bg: #f0f2f5;
-            --pm-navy: #123a79;
-        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
 
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        html,
         body {
-            height: 100%;
-        }
-
-        body.pm-login-body {
-            margin: 0;
-            background: var(--pm-bg);
             font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+            background: #eef2f9;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            min-height: 100vh;
         }
 
-        .pm-login-card {
-            width: min(1100px, 100%);
+        .pm-card {
+            width: min(1080px, 100%);
             height: 620px;
             display: flex;
-            border-radius: 16px;
+            border-radius: 18px;
             overflow: hidden;
-            box-shadow: 0 18px 42px rgba(16, 24, 40, 0.14);
+            box-shadow: 0 20px 48px rgba(16, 24, 40, 0.16);
             background: #fff;
         }
 
+        /* ── Left panel ── */
         .pm-left {
             width: 55%;
             position: relative;
             overflow: hidden;
             color: #fff;
-            padding: 56px;
-            background: linear-gradient(90deg, var(--pm-left-start) 0%, var(--pm-left-end) 100%);
+            padding: 52px 56px;
+            background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 55%, #1e40af 100%);
             display: flex;
             flex-direction: column;
         }
 
-        .pm-left::before,
-        .pm-left::after {
+        .pm-left::before {
             content: "";
             position: absolute;
+            width: 700px; height: 700px;
             border-radius: 50%;
-            background: rgba(144, 170, 255, 0.3);
+            left: -160px; bottom: -400px;
+            background: rgba(147, 197, 253, 0.18);
             pointer-events: none;
         }
 
-        .pm-left::before {
-            width: 640px;
-            height: 640px;
-            left: -130px;
-            bottom: -360px;
-        }
-
         .pm-left::after {
-            width: 840px;
-            height: 840px;
-            left: 140px;
-            bottom: -520px;
-            background: rgba(144, 170, 255, 0.23);
+            content: "";
+            position: absolute;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            right: -200px; top: -200px;
+            background: rgba(147, 197, 253, 0.12);
+            pointer-events: none;
         }
 
-        .pm-left-content,
-        .pm-left-footer {
-            position: relative;
-            z-index: 1;
-        }
+        .pm-left-content, .pm-left-foot { position: relative; z-index: 1; }
 
-        .pm-left-kicker {
-            margin: 0;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.11em;
-            text-transform: uppercase;
-        }
-
-        .pm-left-title {
-            margin: 18px 0 20px;
-            font-size: 56px;
-            font-weight: 800;
-            line-height: 0.95;
-            letter-spacing: -0.02em;
-        }
-
-        .pm-left-copy {
-            margin: 0;
-            max-width: 560px;
-            font-size: 16px;
-            line-height: 1.45;
-            color: rgba(255, 255, 255, 0.85);
-        }
-
-        .pm-left-footer {
-            margin-top: auto;
-            font-size: 16px;
-            color: rgba(255, 255, 255, 0.78);
-        }
-
-        .pm-right {
-            width: 45%;
-            background: #fff;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            padding: 16px 0;
-        }
-
-        .pm-right-inner {
-            width: 100%;
-            max-width: none;
-            padding: 0 64px;
-        }
-
-        .pm-logo {
-            text-align: center;
-            color: var(--pm-navy);
-            margin-bottom: 0;
-        }
-
-        .pm-logo-image {
-            height: 64px;
-            width: auto;
-            display: block;
-            margin: 0 auto 8px;
-            object-fit: contain;
-        }
-
-        .pm-logo-title {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 800;
-            line-height: 1;
-            letter-spacing: -0.02em;
-        }
-
-        .pm-logo-subtitle {
-            margin: 3px 0 0;
+        .pm-kicker {
+            margin: 0 0 18px;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.14em;
             text-transform: uppercase;
+            color: rgba(219, 234, 254, 0.9);
         }
 
-        .pm-form-title {
-            margin: 0 0 8px;
-            font-size: 34px;
-            line-height: 1.05;
-            font-weight: 700;
-            color: #111111;
+        .pm-headline {
+            margin: 0 0 18px;
+            font-size: clamp(2.4rem, 4vw, 3.6rem);
+            font-weight: 800;
+            line-height: 1.0;
             letter-spacing: -0.02em;
         }
 
-        .pm-form-copy {
+        .pm-copy {
             margin: 0;
-            font-size: 14px;
-            line-height: 1.45;
-            color: #667085;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: rgba(219, 234, 254, 0.88);
+            max-width: 420px;
         }
 
-        .pm-form {
-            margin-top: 16px;
+        .pm-left-foot {
+            margin-top: auto;
+            font-size: 0.88rem;
+            color: rgba(219, 234, 254, 0.7);
         }
 
-        .pm-field {
+        /* ── Right panel ── */
+        .pm-right {
+            width: 45%;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 56px;
+        }
+
+        .pm-right-inner { width: 100%; }
+
+        .pm-logo-wrap {
+            text-align: center;
             margin-bottom: 20px;
         }
 
+        .pm-logo-img {
+            height: 60px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+
+        .pm-form-title {
+            margin: 0 0 6px;
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+
+        .pm-form-sub {
+            margin: 0 0 20px;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .pm-field { margin-bottom: 18px; }
+
         .pm-field label {
             display: block;
-            margin: 0 0 6px;
-            font-size: 14px;
+            margin-bottom: 5px;
+            font-size: 0.88rem;
             font-weight: 600;
-            color: #101828;
+            color: #1e293b;
         }
 
         .pm-field input {
             width: 100%;
             border: none;
-            border-bottom: 1px solid #cccccc;
+            border-bottom: 2px solid #cbd5e1;
             border-radius: 0;
             background: transparent;
-            padding: 10px 0;
-            font-size: 15px;
-            color: #111827;
+            padding: 9px 2px;
+            font-size: 0.95rem;
+            color: #0f172a;
             outline: none;
+            transition: border-color 0.2s;
         }
 
-        .pm-field input:focus {
-            border-bottom-color: #3b5af5;
-            box-shadow: none;
+        .pm-field input:focus { border-bottom-color: #2563eb; }
+        .pm-field input::placeholder { color: #94a3b8; }
+        .pm-field input.is-invalid { border-bottom-color: #ef4444; }
+
+        .pm-error {
+            margin-top: 4px;
+            font-size: 0.8rem;
+            color: #ef4444;
         }
 
-        .pm-field input::placeholder {
-            color: #7a8699;
-        }
-
-        .pm-btn-primary,
-        .pm-btn-google {
-            width: 100%;
+        .pm-alert {
+            padding: 10px 14px;
             border-radius: 8px;
-            padding: 14px;
-            line-height: 1;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            font-size: 0.88rem;
+            margin-bottom: 16px;
+        }
+
+        .pm-btn {
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 0.98rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
         .pm-btn-primary {
-            margin-top: 8px;
-            background: #3b5af5;
-            border: none;
+            background: linear-gradient(120deg, #2563eb 0%, #1d4ed8 100%);
             color: #fff;
-            font-size: 16px;
-            font-weight: 700;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+            margin-top: 6px;
         }
 
         .pm-btn-primary:hover {
-            background: #324fe0;
-            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.38);
         }
 
-        .pm-btn-google {
-            margin-top: 10px;
-            border: 1px solid #dddddd;
-            background: #fff;
-            color: #1f2937;
-            font-size: 15px;
+        .pm-hint {
+            margin-top: 16px;
+            padding: 12px 14px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border: 1px solid #bfdbfe;
+        }
+
+        .pm-hint p {
+            margin: 0 0 4px;
+            font-size: 0.78rem;
+            color: #1e40af;
             font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
         }
 
-        .pm-btn-google:hover {
-            border-color: #cfd4df;
-            background: #fafafa;
+        .pm-hint p:last-child { margin-bottom: 0; }
+
+        .pm-hint span {
+            font-weight: 400;
+            color: #3b82f6;
         }
 
-        .pm-google-icon {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
-        }
-
-        .pm-forgot {
-            display: block;
-            text-align: center;
-            margin-top: 10px;
-            font-size: 14px;
-            color: #6b7280;
-            text-decoration: none;
-        }
-
-        .pm-forgot:hover {
-            color: #4b5563;
-            text-decoration: underline;
-        }
-
-        @@media (max-width: 992px) {
-            body.pm-login-body {
-                padding: 0;
-            }
-
-            .pm-login-card {
-                width: 100%;
-                height: auto;
-                min-height: 100vh;
-                border-radius: 0;
-                box-shadow: none;
-                display: block;
-            }
-
-            .pm-left,
-            .pm-right {
-                width: 100%;
-            }
-
-            .pm-left {
-                min-height: 380px;
-                padding: 40px 28px;
-            }
-
-            .pm-left-title {
-                font-size: 44px;
-            }
-
-            .pm-right {
-                padding: 32px 24px 36px;
-                align-items: flex-start;
-            }
-
-            .pm-right-inner {
-                padding: 0;
-            }
+        @@media (max-width: 900px) {
+            body { padding: 0; }
+            .pm-card { flex-direction: column; height: auto; min-height: 100vh; border-radius: 0; box-shadow: none; }
+            .pm-left, .pm-right { width: 100%; }
+            .pm-left { padding: 36px 28px; min-height: 280px; }
+            .pm-right { padding: 28px 24px 36px; align-items: flex-start; }
         }
     </style>
 </head>
-<body class="pm-login-body">
-    <div class="pm-login-card">
-        <section class="pm-left" aria-label="PeakMetrics introduction">
+<body>
+    <div class="pm-card">
+        <section class="pm-left">
             <div class="pm-left-content">
-                <p class="pm-left-kicker">ANALYTICS AND INSIGHTS PLATFORM</p>
-                <h1 class="pm-left-title">Hello, PeakMetrics Team</h1>
-                <p class="pm-left-copy">Monitor performance, automate reporting, and keep every KPI aligned to strategy.</p>
+                <p class="pm-kicker">Analytics &amp; Insights Platform</p>
+                <h1 class="pm-headline">Hello,<br>PeakMetrics<br>Team</h1>
+                <p class="pm-copy">Monitor performance, automate reporting, and keep every KPI aligned to strategy.</p>
             </div>
-            <p class="pm-left-footer">PeakMetrics Analytics and Insights</p>
+            <p class="pm-left-foot">PeakMetrics &copy; @DateTime.Now.Year</p>
         </section>
 
-        <section class="pm-right" aria-label="Login form">
+        <section class="pm-right">
             <div class="pm-right-inner">
-                <div class="pm-logo" aria-label="PeakMetrics logo">
-                    <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics Logo" style="width: min(250px, 100%); height: auto; display: block; margin: 0 auto 14px auto;">
+                <div class="pm-logo-wrap">
+                    <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics" class="pm-logo-img" />
                 </div>
 
-                <h2 class="pm-form-title">Welcome Back!</h2>
-                <p class="pm-form-copy">Sign in to continue to your performance dashboard.</p>
+                <h2 class="pm-form-title">Welcome Back</h2>
+                <p class="pm-form-sub">Sign in to continue to your dashboard.</p>
 
-                <form class="pm-form" asp-controller="Home" asp-action="Dashboard" method="get">
-                    <div class="pm-field">
-                        <label for="email">Email Address</label>
-                        <input id="email" type="text" placeholder="Enter your email" required />
+                @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ContainsKey(string.Empty))
+                {
+                    <div class="pm-alert">
+                        <i>⚠</i> @Html.ValidationMessage(string.Empty)
                     </div>
+                }
+
+                <form asp-controller="Home" asp-action="Login" method="post">
+                    @Html.AntiForgeryToken()
+
                     <div class="pm-field">
-                        <label for="password">Password</label>
-                        <input id="password" type="password" placeholder="Enter your password" required />
+                        <label asp-for="Email">Email Address</label>
+                        <input asp-for="Email" type="email" placeholder="you@peakmetrics.com"
+                               class="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "is-invalid" : "")" />
+                        <div class="pm-error">@Html.ValidationMessageFor(m => m.Email)</div>
                     </div>
 
-                    <button type="submit" class="btn pm-btn-primary">Login Now</button>
-                    <button type="button" class="btn pm-btn-google">
-                        <svg class="pm-google-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.56-5.17 3.56-8.65z" />
-                            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.93-2.91l-3.88-3c-1.08.72-2.46 1.14-4.05 1.14-3.11 0-5.75-2.1-6.69-4.93H1.3v3.09A12 12 0 0 0 12 24z" />
-                            <path fill="#FBBC05" d="M5.31 14.3A7.2 7.2 0 0 1 4.94 12c0-.8.14-1.57.37-2.3V6.61H1.3A12 12 0 0 0 0 12c0 1.94.46 3.77 1.3 5.39l4.01-3.09z" />
-                            <path fill="#EA4335" d="M12 4.77c1.76 0 3.34.61 4.58 1.8l3.44-3.44C17.94 1.2 15.24 0 12 0A12 12 0 0 0 1.3 6.61l4.01 3.09C6.25 6.87 8.89 4.77 12 4.77z" />
-                        </svg>
-                        Continue with Google
-                    </button>
-                    <a href="#" class="pm-forgot">Forgot password?</a>
+                    <div class="pm-field">
+                        <label asp-for="Password">Password</label>
+                        <input asp-for="Password" type="password" placeholder="Enter your password"
+                               class="@(ViewData.ModelState["Password"]?.Errors.Count > 0 ? "is-invalid" : "")" />
+                        <div class="pm-error">@Html.ValidationMessageFor(m => m.Password)</div>
+                    </div>
+
+                    <button type="submit" class="pm-btn pm-btn-primary">Sign In</button>
                 </form>
+
+                <div class="pm-hint">
+                    <p>Admin &mdash; <span>admin@peakmetrics.com / Admin@123</span></p>
+                    <p>Manager &mdash; <span>manager@peakmetrics.com / Manager@123</span></p>
+                    <p>User &mdash; <span>sarah@peakmetrics.com / User@123</span></p>
+                </div>
             </div>
         </section>
     </div>

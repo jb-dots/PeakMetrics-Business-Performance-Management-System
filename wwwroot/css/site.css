@@ -1,9 +1,11 @@
 :root {
-    --pm-primary: #1b4fd8;
-    --pm-primary-dark: #173fa8;
-    --pm-sidebar: #0f172a;
-    --pm-bg: #f3f4f6;
-    --pm-text-muted: #6b7280;
+    --pm-primary:       #2563eb;
+    --pm-primary-dark:  #1d4ed8;
+    --pm-sidebar-bg:    #0f172a;
+    --pm-sidebar-hover: rgba(255, 255, 255, 0.06);
+    --pm-sidebar-active:#2563eb;
+    --pm-bg:            #f3f4f6;
+    --pm-text-muted:    #6b7280;
 }
 
 body {
@@ -14,16 +16,23 @@ body {
 
 .app-shell {
     min-height: 100vh;
+    align-items: flex-start;
 }
 
+/* ── Sticky sidebar ──────────────────────────────────────────────────────── */
 .app-sidebar {
     width: 280px;
-    background: var(--pm-sidebar);
+    background: #0f172a;
     color: #fff;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     transition: width 0.25s ease;
+    overflow: hidden;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    flex-shrink: 0;
 }
 
 .app-logo-wrap {
@@ -73,12 +82,9 @@ body {
 
 .app-sidebar .app-logo-image,
 .app-sidebar-offcanvas .app-logo-image {
-    background: #ffffff;
-    border-radius: 14px;
-    padding: 8px 10px;
-    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.35);
+    border-radius: 10px;
+    padding: 6px 8px;
 }
-
 .report-logo-image {
     width: 120px;
     max-width: 100%;
@@ -102,8 +108,9 @@ body {
 
 .app-sidebar-offcanvas {
     width: 280px;
-    background: var(--pm-sidebar);
+    background: #0f172a;
     color: #fff;
+    overflow-x: hidden;
 }
 
 .app-sidebar-offcanvas .offcanvas-header {
@@ -124,7 +131,7 @@ body {
 
 .app-nav {
     padding: 0.75rem 0;
-    overflow-y: auto;
+    overflow: hidden;
     flex: 1;
 }
 
@@ -173,12 +180,12 @@ body {
 
 .app-nav-link.active {
     border-left-color: var(--pm-primary);
-    background: rgba(27, 79, 216, 0.2);
+    background: rgba(37, 99, 235, 0.2);
 }
 
 .app-nav-link.active .app-nav-icon {
     background: #eff6ff;
-    color: #1b4fd8;
+    color: #2563eb;
 }
 
 body.sidebar-collapsed .app-sidebar {
@@ -230,7 +237,7 @@ body.sidebar-collapsed .app-nav-link {
 }
 
 body.sidebar-collapsed .app-nav-link.active {
-    background: rgba(27, 79, 216, 0.28);
+    background: rgba(37, 99, 235, 0.28);
 }
 
 body.sidebar-collapsed .app-nav-label {
@@ -1132,4 +1139,187 @@ body.sidebar-collapsed .app-nav-link.active .app-nav-icon {
         width: 100%;
         background: #fff;
     }
+}
+
+/* ── Sidebar footer (user info + logout) ─────────────────────────────────── */
+.app-sidebar-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin-top: auto;
+}
+
+.sidebar-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.sidebar-user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.03em;
+}
+
+.sidebar-user-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sidebar-user-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-user-role {
+    font-size: 0.72rem;
+    color: rgba(148, 163, 184, 0.85);
+    white-space: nowrap;
+}
+
+.sidebar-logout-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: rgba(203, 213, 225, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sidebar-logout-btn:hover {
+    background: rgba(239, 68, 68, 0.18);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+}
+
+.sidebar-logout-btn i { font-size: 0.95rem; }
+
+/* Collapsed sidebar — hide user meta, keep avatar + logout */
+body.sidebar-collapsed .sidebar-user-meta { display: none; }
+body.sidebar-collapsed .app-sidebar-footer { justify-content: center; flex-direction: column; gap: 0.4rem; }
+
+/* ── Logo fallback text ───────────────────────────────────────────────────── */
+.app-logo-fallback-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+/* ── Logout confirmation modal ───────────────────────────────────────────── */
+.logout-modal-content {
+    border: none;
+    border-radius: 16px;
+    padding: 2rem 1.75rem 1.5rem;
+    text-align: center;
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.2);
+}
+
+.logout-modal-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fef2f2;
+    color: #ef4444;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+}
+
+.logout-modal-title {
+    margin: 0 0 0.4rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.logout-modal-body {
+    margin: 0 0 1.4rem;
+    font-size: 0.88rem;
+    color: #64748b;
+    line-height: 1.45;
+}
+
+.logout-modal-actions {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+}
+
+.logout-cancel-btn {
+    flex: 1;
+    border: 1px solid #e2e8f0;
+    color: #374151;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.55rem 1rem;
+}
+
+.logout-cancel-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+.logout-confirm-btn {
+    flex: 1;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.55rem 1rem;
+}
+
+.logout-confirm-btn:hover { background: #dc2626; color: #fff; }
+
+/* ── KPI Log Entry — detail panel ───────────────────────────────────────── */
+.kpi-detail-panel {
+    background: #f0f7ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+}
+
+.kpi-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.kpi-detail-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+}
+
+.kpi-detail-value {
+    font-size: 0.92rem;
+    color: #1e293b;
+    font-weight: 500;
 }

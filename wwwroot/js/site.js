@@ -539,6 +539,45 @@
         };
     }
 
+    function initChartFromCanvas(canvasId, type, options) {
+        var el = document.getElementById(canvasId);
+        if (!el || !window.Chart) return;
+        var labels   = JSON.parse(el.dataset.labels   || '[]');
+        var datasets = JSON.parse(el.dataset.datasets || '[]');
+        new Chart(el, { type: type, data: { labels: labels, datasets: datasets }, options: options || {} });
+    }
+
+    function initSuperAdminCharts() {
+        initChartFromCanvas('superAdminRoleChart', 'doughnut', {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'User Role Distribution' } }
+        });
+    }
+
+    function initManagerCharts() {
+        initChartFromCanvas('managerBarChart', 'bar', {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' }, title: { display: true, text: 'KPI Status by Department' } },
+            scales: { x: { stacked: false }, y: { beginAtZero: true, stacked: false } }
+        });
+        initChartFromCanvas('managerTrendChart', 'line', {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' }, title: { display: true, text: 'KPI Trend (Last 6 Months)' } },
+            scales: { y: { beginAtZero: true } }
+        });
+    }
+
+    function initExecutiveCharts() {
+        initChartFromCanvas('execDoughnutChart', 'doughnut', {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'KPI Status Distribution' } }
+        });
+    }
+
     function initDashboardCharts() {
         var canvas = document.getElementById("dashboardLineChart");
         if (!canvas || !window.Chart) return;
@@ -586,63 +625,33 @@
     function initPerformanceCharts() {
         if (!window.Chart) return;
 
-        var line = document.getElementById("performanceLineChart");
-        var bar = document.getElementById("performanceBarChart");
+        var line    = document.getElementById("performanceLineChart");
+        var bar     = document.getElementById("performanceBarChart");
         var doughnut = document.getElementById("performanceDoughnutChart");
 
         if (line) {
-            new Chart(line, {
-                type: "line",
-                data: {
-                    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                    datasets: [
-                        { label: "Financial", data: [85, 87, 88, 87, 89, 90], borderColor: "#1B4FD8", tension: 0.4 },
-                        { label: "Customer", data: [82, 84, 86, 85, 87, 89], borderColor: "#3b82f6", tension: 0.4 },
-                        { label: "Internal Process", data: [78, 80, 79, 81, 82, 84], borderColor: "#60a5fa", tension: 0.4 },
-                        { label: "Learning & Growth", data: [75, 76, 77, 78, 79, 81], borderColor: "#93c5fd", tension: 0.4 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: "Balanced Scorecard Performance Trends" } },
-                    scales: { y: { beginAtZero: true, max: 100 } }
-                }
+            initChartFromCanvas('performanceLineChart', 'line', {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' }, title: { display: true, text: 'KPI Trend by Perspective' } },
+                scales: { y: { beginAtZero: true } }
             });
         }
 
         if (bar) {
-            new Chart(bar, {
-                type: "bar",
-                data: {
-                    labels: ["Finance", "Sales", "HR", "Operations", "Customer Service", "Quality"],
-                    datasets: [{
-                        label: "Performance Score",
-                        data: [92, 88, 75, 82, 90, 85],
-                        backgroundColor: ["#1B4FD8", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe"]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: "Department Performance Scores" }, legend: { display: false } },
-                    scales: { y: { beginAtZero: true, max: 100 } }
-                }
+            initChartFromCanvas('performanceBarChart', 'bar', {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, title: { display: true, text: 'Department Performance Scores (%)' } },
+                scales: { y: { beginAtZero: true, max: 100 } }
             });
         }
 
         if (doughnut) {
-            new Chart(doughnut, {
-                type: "doughnut",
-                data: {
-                    labels: ["On Track", "At Risk", "Behind"],
-                    datasets: [{ data: [32, 12, 4], backgroundColor: ["#1B4FD8", "#60a5fa", "#93c5fd"] }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: "KPI Status Distribution" }, legend: { position: "bottom" } }
-                }
+            initChartFromCanvas('performanceDoughnutChart', 'doughnut', {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'KPI Status Distribution' } }
             });
         }
     }
@@ -792,6 +801,9 @@
         initDesktopSidebarCollapse();
         initBootstrapSidebar();
         initTopbarNotificationDropdown();
+        initSuperAdminCharts();
+        initManagerCharts();
+        initExecutiveCharts();
         initDashboardCharts();
         initPerformanceCharts();
         initKpiTrackingFilter();

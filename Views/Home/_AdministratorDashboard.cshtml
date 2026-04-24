@@ -1,0 +1,145 @@
+@model PeakMetrics.Web.ViewModels.AdministratorDashboardViewModel
+
+@{
+    var summaryCards = new[]
+    {
+        new { Title = "Total Users",          Value = Model.TotalUsers.ToString(),        Icon = "bi-people" },
+        new { Title = "Total Departments",    Value = Model.TotalDepartments.ToString(),  Icon = "bi-building" },
+        new { Title = "Pending KPIs",         Value = Model.PendingKpis.ToString(),       Icon = "bi-hourglass-split" },
+        new { Title = "New Users This Month", Value = Model.NewUsersThisMonth.ToString(), Icon = "bi-person-plus" }
+    };
+}
+
+<!-- Summary Cards -->
+<div class="row g-4 mb-4">
+    @foreach (var card in summaryCards)
+    {
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card card-clean h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small">@card.Title</p>
+                        <h2 class="mb-0 fw-bold">@card.Value</h2>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center rounded-3"
+                         style="width:56px;height:56px;background:#EFF6FF;">
+                        <i class="bi @card.Icon" style="font-size:1.5rem;color:#1B4FD8;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Unread Notifications -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-clean">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center justify-content-center rounded-3"
+                     style="width:48px;height:48px;background:#EFF6FF;">
+                    <i class="bi bi-bell" style="font-size:1.3rem;color:#1B4FD8;"></i>
+                </div>
+                <div>
+                    <p class="text-muted mb-0 small">Unread Notifications</p>
+                    <h4 class="mb-0 fw-bold">
+                        @Model.UnreadNotifications
+                        @if (Model.UnreadNotifications > 0)
+                        {
+                            <span class="badge rounded-pill ms-2" style="background:#ef4444;font-size:0.75rem;">@Model.UnreadNotifications unread</span>
+                        }
+                    </h4>
+                </div>
+                <div class="ms-auto">
+                    <a asp-controller="Home" asp-action="Notifications" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- User List Overview -->
+    <div class="col-12 col-lg-8">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Recent Users</h5>
+                @if (!Model.RecentUsers.Any())
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No users found.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Full Name</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Joined</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in Model.RecentUsers)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@user.FullName</td>
+                                        <td>
+                                            <span class="status-badge status-ontrack">@user.Role</span>
+                                        </td>
+                                        <td class="text-muted">@user.DepartmentName</td>
+                                        <td class="text-muted small">@user.CreatedAt</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Summary -->
+    <div class="col-12 col-lg-4">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Department Summary</h5>
+                @if (!Model.Departments.Any())
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-building fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No departments found.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Users</th>
+                                    <th>KPIs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var dept in Model.Departments)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@dept.Name</td>
+                                        <td>@dept.UserCount</td>
+                                        <td>@dept.ActiveKpiCount</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

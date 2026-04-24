@@ -1,0 +1,186 @@
+@model PeakMetrics.Web.ViewModels.ExecutiveDashboardViewModel
+@using System.Text.Json
+
+@{
+    var summaryCards = new[]
+    {
+        new { Title = "Overall Performance", Value = $"{Model.OverallPerformancePct}%", Icon = "bi-speedometer2" },
+        new { Title = "Total KPIs",          Value = Model.TotalKpis.ToString(),        Icon = "bi-bar-chart-line" },
+        new { Title = "Active Goals",        Value = Model.ActiveGoals.ToString(),      Icon = "bi-lightbulb" },
+        new { Title = "Departments Tracked", Value = Model.DepartmentsTracked.ToString(),Icon = "bi-building" }
+    };
+
+    var execDoughnutDatasets = new[] { new { data = new[] { Model.ChartOnTrack, Model.ChartAtRisk, Model.ChartBehind }, backgroundColor = new[] { "#22c55e", "#f59e0b", "#ef4444" } } };
+}
+
+<!-- Summary Cards -->
+<div class="row g-4 mb-4">
+    @foreach (var card in summaryCards)
+    {
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card card-clean h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1 small">@card.Title</p>
+                        <h2 class="mb-0 fw-bold">@card.Value</h2>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center rounded-3"
+                         style="width:56px;height:56px;background:#EFF6FF;">
+                        <i class="bi @card.Icon" style="font-size:1.5rem;color:#1B4FD8;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Balanced Scorecard Summary -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Balanced Scorecard Summary</h5>
+                @if (!Model.BscPerspectives.Any())
+                {
+                    <div class="text-center py-3 text-muted">
+                        <i class="bi bi-grid-3x3-gap fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No BSC data available.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-3">
+                        @foreach (var p in Model.BscPerspectives)
+                        {
+                            <div class="col-12 col-sm-6 col-xl-3">
+                                <div class="p-3 rounded-3 border h-100">
+                                    <h6 class="fw-semibold mb-3">@p.Perspective</h6>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <span class="status-badge status-ontrack">On Track: @p.OnTrack</span>
+                                        <span class="status-badge status-atrisk">At Risk: @p.AtRisk</span>
+                                        <span class="status-badge status-behind">Behind: @p.Behind</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- KPI Status Distribution Chart -->
+    <div class="col-12 col-lg-4">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">KPI Status Distribution</h5>
+                <div class="canvas-wrap">
+                    <canvas id="execDoughnutChart"
+                            data-labels="@JsonSerializer.Serialize(new[]{"On Track","At Risk","Behind"})"
+                            data-datasets="@JsonSerializer.Serialize(execDoughnutDatasets)"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performing Departments -->
+    <div class="col-12 col-lg-4">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Top Performing Departments</h5>
+                @if (!Model.TopDepartments.Any())
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-building fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No department data available.</p>
+                    </div>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var dept in Model.TopDepartments.OrderByDescending(d => d.ScorePct))
+                        {
+                            var barWidth = Math.Max(dept.ScorePct, 0);
+                            <li class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-semibold small">@dept.DepartmentName</span>
+                                    <span class="small text-muted">@dept.ScorePct%</span>
+                                </div>
+                                <div class="progress" style="height:6px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         style="width:@barWidth%;background:#22c55e;"
+                                         aria-valuenow="@dept.ScorePct" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Underperforming KPIs -->
+    <div class="col-12 col-lg-4">
+        <div class="card card-clean">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Underperforming KPIs</h5>
+                @if (!Model.UnderperformingKpis.Any())
+                {
+                    <div class="d-flex align-items-center gap-2 text-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <p class="mb-0 small">No KPIs are currently behind target.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>KPI</th>
+                                    <th>Department</th>
+                                    <th>Target</th>
+                                    <th>Actual</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var kpi in Model.UnderperformingKpis)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@kpi.KpiName</td>
+                                        <td class="text-muted">@kpi.DepartmentName</td>
+                                        <td>@kpi.Target</td>
+                                        <td class="text-danger fw-semibold">@kpi.Actual</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Executive Reporting Link -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card card-clean">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-3"
+                         style="width:48px;height:48px;background:#EFF6FF;">
+                        <i class="bi bi-file-earmark-text" style="font-size:1.3rem;color:#1B4FD8;"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0 fw-semibold">Executive Report</h6>
+                        <p class="text-muted mb-0 small">View the full executive reporting dashboard with detailed analytics.</p>
+                    </div>
+                </div>
+                <a asp-controller="Home" asp-action="ExecutiveReporting" class="btn btn-primary">View Executive Report</a>
+            </div>
+        </div>
+    </div>
+</div>

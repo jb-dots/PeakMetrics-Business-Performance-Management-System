@@ -1,0 +1,53 @@
+@model PeakMetrics.Web.ViewModels.DepartmentFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-6">
+        <div class="card card-clean">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-1">@(isEdit ? "Edit Department" : "Add Department")</h5>
+                <p class="text-muted small mb-4">
+                    @(isEdit
+                        ? "Update the department name or description."
+                        : "Create a new department. Users and KPIs can be assigned to it after creation.")
+                </p>
+
+                <form asp-controller="Home"
+                      asp-action="@(isEdit ? "DepartmentEdit" : "DepartmentCreate")"
+                      method="post">
+                    @Html.AntiForgeryToken()
+                    @if (isEdit)
+                    {
+                        <input type="hidden" asp-for="Id" />
+                    }
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label fw-semibold">Department Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="e.g., Finance" autofocus />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Description" class="form-label fw-semibold">
+                            Description <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <textarea asp-for="Description" class="form-control" rows="3"
+                                  placeholder="Brief description of this department's function..."></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a asp-controller="Home" asp-action="DepartmentManagement"
+                           class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-floppy"></i>
+                            @(isEdit ? "Save Changes" : "Add Department")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

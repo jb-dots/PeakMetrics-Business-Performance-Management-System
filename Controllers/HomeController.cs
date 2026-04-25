@@ -1554,12 +1554,26 @@ public class HomeController : Controller
     /// <summary>
     /// Formats a decimal value with 2 decimal places for most units,
     /// or 0 decimal places for whole-number units like days and hrs.
+    /// Currency codes get their symbol as a prefix instead of a suffix.
     /// </summary>
     private static string FormatValue(decimal value, string unit)
     {
+        var currencySymbols = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["PHP"] = "₱", ["USD"] = "$", ["EUR"] = "€", ["GBP"] = "£",
+            ["JPY"] = "¥", ["CNY"] = "¥", ["AUD"] = "A$", ["CAD"] = "C$",
+            ["SGD"] = "S$", ["HKD"] = "HK$", ["KRW"] = "₩", ["INR"] = "₹",
+            ["MYR"] = "RM", ["THB"] = "฿", ["IDR"] = "Rp", ["VND"] = "₫",
+            ["SAR"] = "﷼", ["AED"] = "د.إ", ["CHF"] = "Fr", ["BRL"] = "R$"
+        };
+
+        if (currencySymbols.TryGetValue(unit, out var symbol))
+            return $"{symbol}{value:N2}";
+
         var isWholeUnit = unit.Equals("days", StringComparison.OrdinalIgnoreCase)
                        || unit.Equals("hrs",  StringComparison.OrdinalIgnoreCase)
                        || unit.Equals("count",StringComparison.OrdinalIgnoreCase);
+
         return isWholeUnit
             ? $"{value:F0} {unit}"
             : $"{value:F2} {unit}";

@@ -46,8 +46,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem 1.25rem 1.2rem;
-    min-height: 112px;
+    padding: 0.75rem 1.25rem 0.85rem;
+    min-height: unset;
 }
 
 .app-brand {
@@ -75,7 +75,7 @@ body {
 }
 
 .app-sidebar .app-logo-image {
-    width: 156px;
+    width: 130px;
     display: block;
     margin: 0 auto;
 }
@@ -130,7 +130,7 @@ body {
 }
 
 .app-nav {
-    padding: 0.75rem 0;
+    padding: 0.4rem 0;
     overflow: hidden;
     flex: 1;
 }
@@ -139,7 +139,7 @@ body {
     display: flex;
     gap: 0.7rem;
     align-items: center;
-    padding: 0.65rem 1rem 0.65rem 1.35rem;
+    padding: 0.45rem 1rem 0.45rem 1.35rem;
     color: #fff;
     text-decoration: none;
     border-left: 3px solid transparent;
@@ -147,8 +147,8 @@ body {
 }
 
 .app-nav-icon {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 10px;
     display: inline-flex;
     align-items: center;
@@ -160,7 +160,7 @@ body {
 }
 
 .app-nav-icon i {
-    font-size: 1rem;
+    font-size: 0.9rem;
 }
 
 .app-nav-label {
@@ -1322,4 +1322,57 @@ body.sidebar-collapsed .app-sidebar-footer { justify-content: center; flex-direc
     font-size: 0.92rem;
     color: #1e293b;
     font-weight: 500;
+}
+
+/* ── KPI Form — unit category cards ─────────────────────────────────────── */
+.unit-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0.75rem 0.5rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    width: 100%;
+    min-height: 90px;
+    user-select: none;
+}
+
+.unit-card:hover {
+    border-color: #93c5fd;
+    background: #f0f7ff;
+}
+
+.unit-card-selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.unit-card-icon {
+    font-size: 1.4rem;
+    color: #64748b;
+    line-height: 1;
+}
+
+.unit-card-selected .unit-card-icon {
+    color: #2563eb;
+}
+
+.unit-card-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.unit-card-example {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    line-height: 1.2;
 }

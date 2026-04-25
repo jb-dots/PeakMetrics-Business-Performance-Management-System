@@ -1,6 +1,59 @@
 @model PeakMetrics.Web.ViewModels.KpiFormViewModel
 @{
     var isEdit = Model.Id > 0;
+
+    // Determine category from stored unit
+    var isCurrency = Model.Unit is not null && Model.Unit.Length <= 5
+        && Model.Unit != "%" && Model.Unit != "score"
+        && Model.Unit != "days" && Model.Unit != "hrs" && Model.Unit != "count"
+        && !string.IsNullOrEmpty(Model.Unit);
+
+    var unitCategory = Model.Unit switch
+    {
+        "%"     => "percentage",
+        "score" => "score",
+        "days"  => "days",
+        "hrs"   => "hrs",
+        "count" => "count",
+        _       => isCurrency ? "currency" : ""
+    };
+
+    var categories = new[]
+    {
+        new { Value = "percentage", Label = "Percentage",     Icon = "bi-percent",          Example = "e.g., 15 for 15%",       Unit = "%" },
+        new { Value = "currency",   Label = "Currency",       Icon = "bi-currency-exchange", Example = "e.g., 5,000,000",        Unit = "" },
+        new { Value = "score",      Label = "Score / Rating", Icon = "bi-star-half",         Example = "e.g., 4.5 for 4.5/5",    Unit = "score" },
+        new { Value = "days",       Label = "Time (Days)",    Icon = "bi-calendar-week",     Example = "e.g., 3 for 3 days",     Unit = "days" },
+        new { Value = "hrs",        Label = "Time (Hours)",   Icon = "bi-clock",             Example = "e.g., 40 for 40 hrs",    Unit = "hrs" },
+        new { Value = "count",      Label = "Count / Number", Icon = "bi-hash",              Example = "e.g., 100 items",        Unit = "count" },
+    };
+
+    // Common currencies: code → symbol
+    var currencies = new[]
+    {
+        new { Code = "PHP", Symbol = "₱",  Name = "Philippine Peso" },
+        new { Code = "USD", Symbol = "$",  Name = "US Dollar" },
+        new { Code = "EUR", Symbol = "€",  Name = "Euro" },
+        new { Code = "GBP", Symbol = "£",  Name = "British Pound" },
+        new { Code = "JPY", Symbol = "¥",  Name = "Japanese Yen" },
+        new { Code = "CNY", Symbol = "¥",  Name = "Chinese Yuan" },
+        new { Code = "AUD", Symbol = "A$", Name = "Australian Dollar" },
+        new { Code = "CAD", Symbol = "C$", Name = "Canadian Dollar" },
+        new { Code = "SGD", Symbol = "S$", Name = "Singapore Dollar" },
+        new { Code = "HKD", Symbol = "HK$",Name = "Hong Kong Dollar" },
+        new { Code = "KRW", Symbol = "₩",  Name = "South Korean Won" },
+        new { Code = "INR", Symbol = "₹",  Name = "Indian Rupee" },
+        new { Code = "MYR", Symbol = "RM", Name = "Malaysian Ringgit" },
+        new { Code = "THB", Symbol = "฿",  Name = "Thai Baht" },
+        new { Code = "IDR", Symbol = "Rp", Name = "Indonesian Rupiah" },
+        new { Code = "VND", Symbol = "₫",  Name = "Vietnamese Dong" },
+        new { Code = "SAR", Symbol = "﷼",  Name = "Saudi Riyal" },
+        new { Code = "AED", Symbol = "د.إ",Name = "UAE Dirham" },
+        new { Code = "CHF", Symbol = "Fr", Name = "Swiss Franc" },
+        new { Code = "BRL", Symbol = "R$", Name = "Brazilian Real" },
+    };
+
+    var selectedCurrency = isCurrency ? currencies.FirstOrDefault(c => c.Code == Model.Unit) : null;
 }
 
 <div class="row justify-content-center">
@@ -16,10 +69,8 @@
 
                 <form asp-controller="Home" asp-action="@(isEdit ? "KpiEdit" : "KpiCreate")" method="post">
                     @Html.AntiForgeryToken()
-                    @if (isEdit)
-                    {
-                        <input type="hidden" asp-for="Id" />
-                    }
+                    @if (isEdit) { <input type="hidden" asp-for="Id" /> }
+                    <input type="hidden" asp-for="Unit" id="unitHiddenField" />
 
                     <div class="mb-3">
                         <label asp-for="Name" class="form-label fw-semibold">KPI Name</label>
@@ -34,8 +85,7 @@
                                 <option value="">— Select Department —</option>
                                 @foreach (var dept in Model.Departments)
                                 {
-                                    var sel = Model.DepartmentId == dept.Id;
-                                    <option value="@dept.Id" selected="@(sel ? "selected" : null)">@dept.Name</option>
+                                    <option value="@dept.Id" selected="@(Model.DepartmentId == dept.Id ? "selected" : null)">@dept.Name</option>
                                 }
                             </select>
                             <span asp-validation-for="DepartmentId" class="text-danger small"></span>
@@ -46,36 +96,79 @@
                                 <option value="">— Select Perspective —</option>
                                 @foreach (var p in new[] { "Financial", "Customer", "Internal Process", "Learning & Growth" })
                                 {
-                                    var sel = Model.Perspective == p;
-                                    <option value="@p" selected="@(sel ? "selected" : null)">@p</option>
+                                    <option value="@p" selected="@(Model.Perspective == p ? "selected" : null)">@p</option>
                                 }
                             </select>
                             <span asp-validation-for="Perspective" class="text-danger small"></span>
                         </div>
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-12 col-md-6">
-                            <label asp-for="Target" class="form-label fw-semibold">Target Value</label>
+                    @* ── Measurement Type ── *@
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Measurement Type</label>
+                        <p class="text-muted small mb-2">Choose how this KPI is measured.</p>
+                        <div class="row g-2" id="unitCategoryGrid">
+                            @foreach (var cat in categories)
+                            {
+                                var isSelected = unitCategory == cat.Value;
+                                <div class="col-6 col-md-4">
+                                    <label class="unit-card @(isSelected ? "unit-card-selected" : "")"
+                                           data-category="@cat.Value"
+                                           data-unit="@cat.Unit">
+                                        <input type="radio" name="unitCategory" value="@cat.Value" class="d-none unit-radio"
+                                               @(isSelected ? "checked" : "") />
+                                        <span class="unit-card-icon"><i class="bi @cat.Icon"></i></span>
+                                        <span class="unit-card-label">@cat.Label</span>
+                                        <span class="unit-card-example">@cat.Example</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+
+                        @* Currency picker — shown only when Currency card is selected *@
+                        <div id="currencyPickerWrap" class="mt-3 @(unitCategory == "currency" ? "" : "d-none")">
+                            <label class="form-label fw-semibold small">Select Currency</label>
+                            <select class="form-select" id="currencySelect">
+                                <option value="">— Choose a currency —</option>
+                                @foreach (var cur in currencies)
+                                {
+                                    var sel = selectedCurrency?.Code == cur.Code;
+                                    <option value="@cur.Code"
+                                            data-symbol="@cur.Symbol"
+                                            selected="@(sel ? "selected" : null)">
+                                        @cur.Symbol &nbsp; @cur.Code — @cur.Name
+                                    </option>
+                                }
+                            </select>
+                            <div id="currencyError" class="text-danger small mt-1 d-none">Please select a currency.</div>
+                        </div>
+
+                        <div id="unitValidationMsg" class="text-danger small mt-1 d-none">Please select a measurement type.</div>
+                    </div>
+
+                    @* ── Target Value ── *@
+                    <div class="mb-3">
+                        <label asp-for="Target" class="form-label fw-semibold">
+                            Target Value
+                            <span class="text-muted fw-normal small" id="targetUnitHint">
+                                @(string.IsNullOrEmpty(Model.Unit) ? "" : $"({Model.Unit})")
+                            </span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="targetUnitPrefix" style="min-width:52px;justify-content:center;font-weight:600;">
+                                @{
+                                    var prefixDisplay = Model.Unit switch
+                                    {
+                                        "%" => "%", "score" => "★", "days" => "d", "hrs" => "h", "count" => "#",
+                                        _ => selectedCurrency?.Symbol ?? "#"
+                                    };
+                                }
+                                @prefixDisplay
+                            </span>
                             <input asp-for="Target" type="number" step="0.01" min="0" class="form-control"
-                                   placeholder="e.g., 15" />
-                            <span asp-validation-for="Target" class="text-danger small"></span>
+                                   placeholder="Enter target value" />
                         </div>
-                        <div class="col-12 col-md-6">
-                            <label asp-for="Unit" class="form-label fw-semibold">Unit</label>
-                            <input asp-for="Unit" class="form-control" list="unitSuggestions"
-                                   placeholder="e.g., %, score, days, hrs" />
-                            <datalist id="unitSuggestions">
-                                <option value="%"></option>
-                                <option value="score"></option>
-                                <option value="days"></option>
-                                <option value="hrs"></option>
-                                <option value="count"></option>
-                                <option value="PHP"></option>
-                                <option value="USD"></option>
-                            </datalist>
-                            <span asp-validation-for="Unit" class="text-danger small"></span>
-                        </div>
+                        <span asp-validation-for="Target" class="text-danger small"></span>
                     </div>
 
                     <div class="mb-3">
@@ -99,7 +192,8 @@
 
                     <div class="d-flex gap-2 justify-content-end">
                         <a asp-controller="Home" asp-action="KpiManagement" class="btn btn-outline-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
+                        <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2"
+                                id="kpiSubmitBtn">
                             <i class="bi bi-floppy"></i>
                             @(isEdit ? "Save Changes" : "Create KPI")
                         </button>
@@ -109,3 +203,92 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+    var cards          = document.querySelectorAll('.unit-card');
+    var hidden         = document.getElementById('unitHiddenField');
+    var prefix         = document.getElementById('targetUnitPrefix');
+    var hint           = document.getElementById('targetUnitHint');
+    var currencyWrap   = document.getElementById('currencyPickerWrap');
+    var currencySelect = document.getElementById('currencySelect');
+    var currencyError  = document.getElementById('currencyError');
+    var unitError      = document.getElementById('unitValidationMsg');
+    var form           = document.querySelector('form');
+
+    var prefixMap = {
+        '%': '%', 'score': '★', 'days': 'd', 'hrs': 'h', 'count': '#'
+    };
+
+    function updatePrefix(unit, symbol) {
+        var p = symbol || prefixMap[unit] || '#';
+        prefix.textContent = p;
+        hint.textContent   = unit ? '(' + unit + ')' : '';
+    }
+
+    function selectCard(card) {
+        cards.forEach(function (c) { c.classList.remove('unit-card-selected'); });
+        card.classList.add('unit-card-selected');
+        card.querySelector('.unit-radio').checked = true;
+        unitError.classList.add('d-none');
+
+        var category = card.dataset.category;
+        var unit     = card.dataset.unit;
+
+        if (category === 'currency') {
+            currencyWrap.classList.remove('d-none');
+            // If a currency is already chosen, keep it
+            var chosen = currencySelect.options[currencySelect.selectedIndex];
+            if (chosen && chosen.value) {
+                hidden.value = chosen.value;
+                updatePrefix(chosen.value, chosen.dataset.symbol);
+            } else {
+                hidden.value = '';
+                updatePrefix('', '');
+            }
+        } else {
+            currencyWrap.classList.add('d-none');
+            currencyError.classList.add('d-none');
+            hidden.value = unit;
+            updatePrefix(unit, null);
+        }
+    }
+
+    cards.forEach(function (card) {
+        card.addEventListener('click', function () { selectCard(card); });
+    });
+
+    currencySelect.addEventListener('change', function () {
+        var opt = this.options[this.selectedIndex];
+        if (opt && opt.value) {
+            hidden.value = opt.value;
+            updatePrefix(opt.value, opt.dataset.symbol);
+            currencyError.classList.add('d-none');
+        } else {
+            hidden.value = '';
+            updatePrefix('', '');
+        }
+    });
+
+    // Validate before submit
+    form.addEventListener('submit', function (e) {
+        var selectedCat = document.querySelector('.unit-card-selected');
+        if (!selectedCat) {
+            unitError.classList.remove('d-none');
+            e.preventDefault();
+            return;
+        }
+        if (selectedCat.dataset.category === 'currency' && !currencySelect.value) {
+            currencyError.classList.remove('d-none');
+            e.preventDefault();
+            return;
+        }
+    });
+
+    // Init on page load (edit mode)
+    var preSelected = document.querySelector('.unit-card-selected');
+    if (preSelected) selectCard(preSelected);
+})();
+</script>
+}

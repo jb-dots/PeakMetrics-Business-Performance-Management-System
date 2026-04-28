@@ -14,6 +14,7 @@ public sealed class StrategicGoalCardViewModel
     public string  Status      { get; init; } = "Not Started";
     public string? DueDate     { get; init; }
     public string? OwnerName   { get; init; }
+    public bool    IsArchived  { get; init; }
 }
 
 public sealed class StrategicGoalFormViewModel

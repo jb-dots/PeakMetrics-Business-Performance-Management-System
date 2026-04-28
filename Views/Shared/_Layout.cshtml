@@ -29,6 +29,7 @@
         new { Action = "StrategicPlanning",   Label = "Strategic Planning",   Icon = "bi-lightbulb",          Roles = new[]{ "Admin","Manager","Executive" } },
         new { Action = "ExecutiveReporting",  Label = "Executive Reporting",  Icon = "bi-file-earmark-text",  Roles = new[]{ "Admin","Manager","Executive" } },
         new { Action = "DepartmentManagement",Label = "Department Management",Icon = "bi-building",           Roles = new[]{ "Admin","Administrator" } },
+        new { Action = "UserManagement",      Label = "User Management",      Icon = "bi-people",             Roles = new[]{ "Admin","Administrator" } },
         new { Action = "AuditLog",            Label = "Audit Log",            Icon = "bi-shield-lock",        Roles = new[]{ "Admin" } },
     };
 
@@ -75,30 +76,37 @@
                             <span class="app-nav-label">@item.Label</span>
                         </a>
                     }
-                    @if (canManageKpis)
-                    {
-                        var isKpiMgmt = string.Equals(currentAction, "KpiManagement", StringComparison.OrdinalIgnoreCase);
-                        <a asp-controller="Home" asp-action="KpiManagement"
-                           class="app-nav-link @(isKpiMgmt ? "active" : string.Empty)"
-                           title="KPI Management">
-                            <span class="app-nav-icon"><i class="bi bi-sliders"></i></span>
-                            <span class="app-nav-label">KPI Management</span>
-                        </a>
-                    }
                 </nav>
 
-                <!-- Sidebar footer: user info + logout -->
+                <!-- Sidebar footer: clickable avatar → popup with Profile + Sign out -->
                 <div class="app-sidebar-footer">
-                    <div class="sidebar-user-info">
-                        <div class="sidebar-user-avatar">@sessionUserInitials</div>
-                        <div class="sidebar-user-meta">
-                            <span class="sidebar-user-name">@sessionUserName</span>
-                            <span class="sidebar-user-role">@sessionUserRole</span>
+                    <div class="sidebar-user-popup-wrap" id="sidebarUserWrap">
+                        <button type="button" class="sidebar-user-btn" id="sidebarUserToggle"
+                                aria-expanded="false" aria-label="User menu">
+                            <div class="sidebar-user-avatar">@sessionUserInitials</div>
+                            <div class="sidebar-user-meta">
+                                <span class="sidebar-user-name">@sessionUserName</span>
+                                <span class="sidebar-user-role">@sessionUserRole</span>
+                            </div>
+                            <i class="bi bi-chevron-up sidebar-user-chevron"></i>
+                        </button>
+                        <div class="sidebar-user-popup" id="sidebarUserPopup" hidden>
+                            <div class="sidebar-popup-header">
+                                <div class="sidebar-popup-avatar">@sessionUserInitials</div>
+                                <div>
+                                    <div class="sidebar-popup-name">@sessionUserName</div>
+                                    <div class="sidebar-popup-role">@sessionUserRole</div>
+                                </div>
+                            </div>
+                            <div class="sidebar-popup-divider"></div>
+                            <a asp-controller="Home" asp-action="Profile" class="sidebar-popup-item">
+                                <i class="bi bi-person-circle"></i><span>Profile</span>
+                            </a>
+                            <button type="button" class="sidebar-popup-item sidebar-popup-logout" id="logoutTrigger">
+                                <i class="bi bi-box-arrow-right"></i><span>Sign out</span>
+                            </button>
                         </div>
                     </div>
-                    <button type="button" class="sidebar-logout-btn" id="logoutTrigger" title="Sign out" aria-label="Sign out">
-                        <i class="bi bi-box-arrow-right"></i>
-                    </button>
                 </div>
             </aside>
 
@@ -123,27 +131,35 @@
                                 <span class="app-nav-label">@item.Label</span>
                             </a>
                         }
-                        @if (canManageKpis)
-                        {
-                            var isKpiMgmt = string.Equals(currentAction, "KpiManagement", StringComparison.OrdinalIgnoreCase);
-                            <a asp-controller="Home" asp-action="KpiManagement"
-                               class="app-nav-link @(isKpiMgmt ? "active" : string.Empty)">
-                                <span class="app-nav-icon"><i class="bi bi-sliders"></i></span>
-                                <span class="app-nav-label">KPI Management</span>
-                            </a>
-                        }
                     </nav>
                     <div class="app-sidebar-footer">
-                        <div class="sidebar-user-info">
-                            <div class="sidebar-user-avatar">@sessionUserInitials</div>
-                            <div class="sidebar-user-meta">
-                                <span class="sidebar-user-name">@sessionUserName</span>
-                                <span class="sidebar-user-role">@sessionUserRole</span>
+                        <div class="sidebar-user-popup-wrap" id="sidebarUserWrapMobile">
+                            <button type="button" class="sidebar-user-btn" id="sidebarUserToggleMobile"
+                                    aria-expanded="false" aria-label="User menu">
+                                <div class="sidebar-user-avatar">@sessionUserInitials</div>
+                                <div class="sidebar-user-meta">
+                                    <span class="sidebar-user-name">@sessionUserName</span>
+                                    <span class="sidebar-user-role">@sessionUserRole</span>
+                                </div>
+                                <i class="bi bi-chevron-up sidebar-user-chevron"></i>
+                            </button>
+                            <div class="sidebar-user-popup" id="sidebarUserPopupMobile" hidden>
+                                <div class="sidebar-popup-header">
+                                    <div class="sidebar-popup-avatar">@sessionUserInitials</div>
+                                    <div>
+                                        <div class="sidebar-popup-name">@sessionUserName</div>
+                                        <div class="sidebar-popup-role">@sessionUserRole</div>
+                                    </div>
+                                </div>
+                                <div class="sidebar-popup-divider"></div>
+                                <a asp-controller="Home" asp-action="Profile" class="sidebar-popup-item">
+                                    <i class="bi bi-person-circle"></i><span>Profile</span>
+                                </a>
+                                <button type="button" class="sidebar-popup-item sidebar-popup-logout" id="logoutTriggerMobile">
+                                    <i class="bi bi-box-arrow-right"></i><span>Sign out</span>
+                                </button>
                             </div>
                         </div>
-                        <button type="button" class="sidebar-logout-btn" id="logoutTriggerMobile" title="Sign out" aria-label="Sign out">
-                            <i class="bi bi-box-arrow-right"></i>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -218,12 +234,34 @@
                             </div>
                         </div>
 
-                        <!-- Profile pill -->
-                        <a asp-controller="Home" asp-action="Profile"
-                           class="app-user-pill-link @(isProfilePage ? "active" : string.Empty)"
-                           aria-label="Open profile page">
-                            <span class="app-user-pill">@sessionUserInitials</span>
-                        </a>
+                        <!-- Profile dropdown -->
+                        <div class="topbar-dropdown-wrap" id="profileDropdownWrap">
+                            <button type="button"
+                                    class="app-user-pill-link @(isProfilePage ? "active" : string.Empty)"
+                                    id="profileDropdownToggle"
+                                    aria-expanded="false"
+                                    aria-label="Open user menu">
+                                <span class="app-user-pill">@sessionUserInitials</span>
+                            </button>
+                            <div class="profile-dropdown" id="profileDropdownPanel" hidden>
+                                <div class="profile-dropdown-header">
+                                    <div class="profile-dropdown-avatar">@sessionUserInitials</div>
+                                    <div>
+                                        <div class="profile-dropdown-name">@sessionUserName</div>
+                                        <div class="profile-dropdown-role">@sessionUserRole</div>
+                                    </div>
+                                </div>
+                                <div class="profile-dropdown-divider"></div>
+                                <a asp-controller="Home" asp-action="Profile" class="profile-dropdown-item">
+                                    <i class="bi bi-person-circle"></i>
+                                    <span>Profile</span>
+                                </a>
+                                <button type="button" class="profile-dropdown-item profile-dropdown-logout" id="profileLogoutTrigger">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    <span>Sign out</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </header>
 
@@ -264,8 +302,62 @@
         <script>
             (function () {
                 const modal = new bootstrap.Modal(document.getElementById('logoutModal'));
-                document.getElementById('logoutTrigger')?.addEventListener('click', () => modal.show());
-                document.getElementById('logoutTriggerMobile')?.addEventListener('click', () => modal.show());
+
+                // Sidebar user popup toggle (desktop)
+                const sidebarToggle = document.getElementById('sidebarUserToggle');
+                const sidebarPopup  = document.getElementById('sidebarUserPopup');
+                if (sidebarToggle && sidebarPopup) {
+                    sidebarToggle.addEventListener('click', function () {
+                        sidebarPopup.hidden = !sidebarPopup.hidden;
+                        sidebarToggle.setAttribute('aria-expanded', !sidebarPopup.hidden);
+                    });
+                    document.addEventListener('click', function (e) {
+                        if (!sidebarPopup.hidden && !document.getElementById('sidebarUserWrap').contains(e.target)) {
+                            sidebarPopup.hidden = true;
+                        }
+                    });
+                }
+
+                // Sidebar user popup toggle (mobile)
+                const sidebarToggleMobile = document.getElementById('sidebarUserToggleMobile');
+                const sidebarPopupMobile  = document.getElementById('sidebarUserPopupMobile');
+                if (sidebarToggleMobile && sidebarPopupMobile) {
+                    sidebarToggleMobile.addEventListener('click', function () {
+                        sidebarPopupMobile.hidden = !sidebarPopupMobile.hidden;
+                    });
+                }
+
+                // Logout triggers
+                document.getElementById('logoutTrigger')?.addEventListener('click', () => {
+                    if (sidebarPopup) sidebarPopup.hidden = true;
+                    modal.show();
+                });
+                document.getElementById('logoutTriggerMobile')?.addEventListener('click', () => {
+                    if (sidebarPopupMobile) sidebarPopupMobile.hidden = true;
+                    modal.show();
+                });
+
+                // Profile dropdown logout (topbar)
+                document.getElementById('profileLogoutTrigger')?.addEventListener('click', () => {
+                    document.getElementById('profileDropdownPanel').hidden = true;
+                    modal.show();
+                });
+
+                // Profile dropdown toggle (topbar)
+                const profileToggle = document.getElementById('profileDropdownToggle');
+                const profilePanel  = document.getElementById('profileDropdownPanel');
+                if (profileToggle && profilePanel) {
+                    profileToggle.addEventListener('click', function () {
+                        profilePanel.hidden = !profilePanel.hidden;
+                        profileToggle.setAttribute('aria-expanded', !profilePanel.hidden);
+                    });
+                    document.addEventListener('click', function (e) {
+                        if (!profilePanel.hidden && !document.getElementById('profileDropdownWrap').contains(e.target)) {
+                            profilePanel.hidden = true;
+                            profileToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                }
             })();
         </script>
     }

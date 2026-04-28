@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PeakMetrics.Web.Data;
 
@@ -11,9 +12,11 @@ using PeakMetrics.Web.Data;
 namespace PeakMetrics.Web.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260425171917_GoalArchive")]
+    partial class GoalArchive
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -204,9 +207,6 @@ namespace PeakMetrics.Web.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsArchived")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -225,7 +225,6 @@ namespace PeakMetrics.Web.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Financial planning and reporting",
-                            IsArchived = false,
                             Name = "Finance"
                         },
                         new
@@ -233,7 +232,6 @@ namespace PeakMetrics.Web.Migrations
                             Id = 2,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Human resources and talent management",
-                            IsArchived = false,
                             Name = "HR"
                         },
                         new
@@ -241,7 +239,6 @@ namespace PeakMetrics.Web.Migrations
                             Id = 3,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Revenue generation and client relations",
-                            IsArchived = false,
                             Name = "Sales"
                         },
                         new
@@ -249,7 +246,6 @@ namespace PeakMetrics.Web.Migrations
                             Id = 4,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Process efficiency and delivery",
-                            IsArchived = false,
                             Name = "Operations"
                         },
                         new
@@ -257,7 +253,6 @@ namespace PeakMetrics.Web.Migrations
                             Id = 5,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Customer satisfaction and support",
-                            IsArchived = false,
                             Name = "Customer Service"
                         },
                         new
@@ -265,7 +260,6 @@ namespace PeakMetrics.Web.Migrations
                             Id = 6,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Quality assurance and compliance",
-                            IsArchived = false,
                             Name = "Quality"
                         });
                 });

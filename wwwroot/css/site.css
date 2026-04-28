@@ -28,11 +28,12 @@ body {
     flex-direction: column;
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     transition: width 0.25s ease;
-    overflow: hidden;
+    overflow: visible;
     position: sticky;
     top: 0;
     height: 100vh;
     flex-shrink: 0;
+    z-index: 100;
 }
 
 .app-logo-wrap {
@@ -131,7 +132,8 @@ body {
 
 .app-nav {
     padding: 0.4rem 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: hidden;
     flex: 1;
 }
 
@@ -221,18 +223,18 @@ body.sidebar-collapsed .app-tagline {
 }
 
 body.sidebar-collapsed .app-nav {
-    padding-top: 0.85rem;
+    padding-top: 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.15rem;
 }
 
 body.sidebar-collapsed .app-nav-link {
     border-left-color: transparent;
     justify-content: center;
-    margin: 0 0.6rem;
-    padding: 0.55rem;
-    border-radius: 12px;
+    margin: 0 0.5rem;
+    padding: 0.45rem;
+    border-radius: 10px;
     transform: none;
 }
 
@@ -245,8 +247,8 @@ body.sidebar-collapsed .app-nav-label {
 }
 
 body.sidebar-collapsed .app-nav-icon {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
 }
 
 body.sidebar-collapsed .app-nav-link.active .app-nav-icon {
@@ -263,6 +265,9 @@ body.sidebar-collapsed .app-nav-link.active .app-nav-icon {
     background: #fff;
     border-bottom: 1px solid #e5e7eb;
     padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 200;
 }
 
 .app-page-title {
@@ -311,6 +316,11 @@ body.sidebar-collapsed .app-nav-link.active .app-nav-icon {
     color: var(--pm-primary);
 }
 
+.topbar-icon-btn.active i {
+    opacity: 1;
+    visibility: visible;
+}
+
 .topbar-icon-btn i {
     font-size: 1.1rem;
 }
@@ -330,6 +340,19 @@ body.sidebar-collapsed .app-nav-link.active .app-nav-icon {
     border-radius: 14px;
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
     z-index: 1045;
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: calc(100% + 0.65rem);
+    right: 0;
+    width: 220px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+    z-index: 1045;
+    overflow: hidden;
 }
 
 .notification-dropdown-header {
@@ -432,8 +455,8 @@ body.sidebar-collapsed .app-nav-link.active .app-nav-icon {
 
 .topbar-badge {
     position: absolute;
-    top: -7px;
-    right: -7px;
+    top: -5px;
+    right: -10px;
     min-width: 20px;
     height: 20px;
     border-radius: 9999px;
@@ -444,10 +467,23 @@ body.sidebar-collapsed .app-nav-link.active .app-nav-icon {
     text-align: center;
     border: 2px solid #fff;
     font-weight: 600;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+    display: none; /* hidden by default — JS shows it only when count > 0 */
+    pointer-events: none; /* never blocks clicks on the bell */
 }
 
 .app-user-pill-link {
     text-decoration: none;
+    border-radius: 9999px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    outline: none;
+    cursor: pointer;
+}
+
+.app-user-pill-link:focus-visible {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
     border-radius: 9999px;
 }
 
@@ -1375,4 +1411,464 @@ body.sidebar-collapsed .app-sidebar-footer { justify-content: center; flex-direc
     font-size: 0.7rem;
     color: #94a3b8;
     line-height: 1.2;
+}
+
+/* ── Profile dropdown ────────────────────────────────────────────────────── */
+.profile-dropdown {
+    position: absolute;
+    top: calc(100% + 0.65rem);
+    right: 0;
+    width: 220px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+    z-index: 1045;
+    overflow: hidden;
+}
+
+.profile-dropdown-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+    background: #f8faff;
+}
+
+.profile-dropdown-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--pm-primary);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.profile-dropdown-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-dropdown-role {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.profile-dropdown-divider {
+    height: 1px;
+    background: #eef2f7;
+}
+
+.profile-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.88rem;
+    color: #374151;
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.profile-dropdown-item:hover {
+    background: #f0f7ff;
+    color: var(--pm-primary);
+}
+
+.profile-dropdown-item i {
+    font-size: 1rem;
+    width: 18px;
+    text-align: center;
+}
+
+.profile-dropdown-logout:hover {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* ── Strategic Planning — goal cards ─────────────────────────────────────── */
+.goal-card {
+    border: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.goal-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+.goal-card-archived {
+    opacity: 0.65;
+}
+
+.goal-card-header {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.9rem;
+}
+
+.goal-title {
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+/* Status pills inside the header */
+.goal-status-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.goal-status-inprogress {
+    background: rgba(255,255,255,0.25);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+.goal-status-notstarted {
+    background: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.25);
+}
+
+.goal-status-completed {
+    background: rgba(34,197,94,0.25);
+    color: #fff;
+    border: 1px solid rgba(34,197,94,0.5);
+}
+
+.goal-status-cancelled {
+    background: rgba(239,68,68,0.25);
+    color: #fff;
+    border: 1px solid rgba(239,68,68,0.4);
+}
+
+/* ── Sidebar footer — user popup ─────────────────────────────────────────── */
+.app-sidebar-footer {
+    padding: 0.6rem 0.75rem 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: auto;
+    position: relative;
+}
+
+.sidebar-user-popup-wrap {
+    position: relative;
+}
+
+.sidebar-user-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    padding: 0.5rem 0.6rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: #e2e8f0;
+    text-align: left;
+}
+
+.sidebar-user-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--pm-primary);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.03em;
+}
+
+.sidebar-user-chevron {
+    margin-left: auto;
+    font-size: 0.7rem;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+/* Popup panel — fixed position, opens to the RIGHT of the sidebar */
+.sidebar-user-popup {
+    position: fixed;
+    bottom: 1rem;
+    left: 290px;
+    width: 240px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.25), 0 4px 16px rgba(15, 23, 42, 0.15);
+    overflow: hidden;
+    z-index: 99999;
+}
+
+.sidebar-popup-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+    background: #f8faff;
+}
+
+.sidebar-popup-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--pm-primary);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sidebar-popup-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-popup-role {
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.sidebar-popup-divider {
+    height: 1px;
+    background: #eef2f7;
+}
+
+.sidebar-popup-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 1rem;
+    font-size: 0.88rem;
+    color: #374151;
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.sidebar-popup-item:hover {
+    background: #f0f7ff;
+    color: var(--pm-primary);
+}
+
+.sidebar-popup-item i {
+    font-size: 1rem;
+    width: 18px;
+    text-align: center;
+}
+
+.sidebar-popup-logout:hover {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* Collapsed sidebar — show only avatar, no text */
+body.sidebar-collapsed .sidebar-user-btn {
+    justify-content: center;
+    padding: 0.4rem;
+    background: transparent;
+    border-radius: 50%;
+}
+
+body.sidebar-collapsed .sidebar-user-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+body.sidebar-collapsed .sidebar-user-meta,
+body.sidebar-collapsed .sidebar-user-chevron {
+    display: none;
+}
+
+/* Collapsed sidebar — popup shifts to match collapsed width */
+body.sidebar-collapsed .sidebar-user-popup {
+    left: 106px;
+    bottom: 1rem;
+    right: auto;
+    width: 210px;
+}
+
+/* ── KPI Log Entry — redesigned ─────────────────────────────────────────── */
+
+/* Pre-selected KPI card */
+.kpi-log-selected-card {
+    background: #f0f7ff;
+    border: 2px solid #2563eb;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.kpi-log-selected-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.kpi-log-selected-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.kpi-log-selected-meta {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.kpi-log-selected-target {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.kpi-log-target-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+}
+
+.kpi-log-target-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.kpi-log-change-btn {
+    font-size: 0.8rem;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.kpi-log-change-btn:hover { text-decoration: underline; }
+
+/* KPI selection cards (when no pre-selection) */
+.kpi-select-card {
+    display: block;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fff;
+}
+
+.kpi-select-card:hover {
+    border-color: #93c5fd;
+    background: #f0f7ff;
+}
+
+.kpi-select-card-active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.kpi-select-card-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.kpi-select-card-meta {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.kpi-select-card-target {
+    font-size: 0.75rem;
+    color: #2563eb;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* Period cards */
+.period-card {
+    padding: 0.45rem 0.9rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #374151;
+    background: #fff;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+}
+
+.period-card:hover {
+    border-color: #93c5fd;
+    background: #f0f7ff;
+}
+
+.period-card-active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+/* ── User Management — role badge ────────────────────────────────────────── */
+.bg-purple {
+    background-color: #7c3aed !important;
+    color: #fff !important;
+}
+
+/* ── Archive button — darker amber ──────────────────────────────────────── */
+.btn-archive {
+    color: #92400e;
+    background: transparent;
+    border: 1px solid #d97706;
+}
+
+.btn-archive:hover {
+    background: #d97706;
+    border-color: #d97706;
+    color: #fff;
 }

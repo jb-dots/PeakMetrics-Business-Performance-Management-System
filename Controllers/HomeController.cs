@@ -285,7 +285,7 @@ public class HomeController : Controller
         // Latest entry per KPI
         var latestByKpi = await _db.KpiLogEntries
             .GroupBy(e => e.KpiId)
-            .Select(g => g.OrderByDescending(e => e.LoggedAt).First())
+            .Select(g => g.OrderByDescending(e => e.LoggedAt).ThenByDescending(e => e.Id).First())
             .ToListAsync(ct);
 
         var totalKpis = await _db.Kpis.CountAsync(k => k.IsActive, ct);
@@ -425,7 +425,7 @@ public class HomeController : Controller
 
         var myKpiList = deptKpis.Select(k =>
         {
-            var latest = k.LogEntries.OrderByDescending(e => e.LoggedAt).FirstOrDefault();
+            var latest = k.LogEntries.OrderByDescending(e => e.LoggedAt).ThenByDescending(e => e.Id).FirstOrDefault();
             var status = latest?.Status ?? "No Data";
             return new KpiRowViewModel(
                 k.Name,
@@ -502,7 +502,7 @@ public class HomeController : Controller
         // Latest entry per KPI
         var latestByKpi = await _db.KpiLogEntries
             .GroupBy(e => e.KpiId)
-            .Select(g => g.OrderByDescending(e => e.LoggedAt).First())
+            .Select(g => g.OrderByDescending(e => e.LoggedAt).ThenByDescending(e => e.Id).First())
             .ToListAsync(ct);
 
         var kpisWithEntries = latestByKpi.Count;
@@ -610,17 +610,19 @@ public class HomeController : Controller
         string? department,
         string? perspective,
         string? status,
+        bool showArchived = false,
         CancellationToken cancellationToken = default)
     {
         if (!HasAccess("Admin", "Manager", "User", "Executive")) return Forbid();
         ViewData["Title"] = "KPI Tracking";
+        ViewBag.ShowArchived = showArchived;
 
         var selectedDepartment  = string.IsNullOrWhiteSpace(department)  ? "All" : department.Trim();
         var selectedPerspective = string.IsNullOrWhiteSpace(perspective) ? "All" : perspective.Trim();
         var selectedStatus      = string.IsNullOrWhiteSpace(status)      ? "All" : status.Trim();
 
         var kpisQuery = _db.Kpis
-            .Where(k => k.IsActive)
+            .Where(k => k.IsActive == !showArchived)
             .Include(k => k.Department)
             .Include(k => k.LogEntries)
             .AsNoTracking();
@@ -633,7 +635,7 @@ public class HomeController : Controller
         var kpiItems = kpis
             .Select(k =>
             {
-                var latest    = k.LogEntries.OrderByDescending(e => e.LoggedAt).FirstOrDefault();
+                var latest    = k.LogEntries.OrderByDescending(e => e.LoggedAt).ThenByDescending(e => e.Id).FirstOrDefault();
                 var kpiStatus = latest?.Status ?? "No Data";
                 var severity  = kpiStatus == "Behind"  ? AlertSeverity.Critical
                               : kpiStatus == "At Risk"  ? AlertSeverity.Warning
@@ -641,12 +643,14 @@ public class HomeController : Controller
 
                 return new KpiTrackingItemViewModel
                 {
+                    Id          = k.Id,
                     Name        = k.Name,
                     Department  = k.Department.Name,
                     Perspective = k.Perspective,
                     Target      = FormatValue(k.Target, k.Unit),
                     Actual      = latest != null ? FormatValue(latest.ActualValue, k.Unit) : "—",
                     Status      = kpiStatus,
+                    IsArchived  = !k.IsActive,
                     Severity    = severity
                 };
             })
@@ -673,12 +677,16 @@ public class HomeController : Controller
 
     // ── KPI Log Entry ─────────────────────────────────────────────────────────
     [HttpGet]
-    public async Task<IActionResult> KPILogEntry(CancellationToken cancellationToken)
+    public async Task<IActionResult> KPILogEntry(int? kpiId, CancellationToken cancellationToken)
     {
         if (!HasAccess("Admin", "Manager", "User")) return Forbid();
         ViewData["Title"] = "KPI Log Entry";
         ViewBag.Kpis = await GetKpiDetailsAsync(cancellationToken);
-        return View(new KpiLogEntryViewModel { LoggedAt = DateTime.Today });
+        return View(new KpiLogEntryViewModel
+        {
+            LoggedAt = DateTime.Today,
+            KpiId    = kpiId ?? 0
+        });
     }
 
     [HttpPost]
@@ -956,7 +964,7 @@ public class HomeController : Controller
                 var kpisInPerspective = kpis.Where(k => k.Perspective == p).ToList();
                 var rows = kpisInPerspective.Select(k =>
                 {
-                    var latest = k.LogEntries.OrderByDescending(e => e.LoggedAt).FirstOrDefault();
+                    var latest = k.LogEntries.OrderByDescending(e => e.LoggedAt).ThenByDescending(e => e.Id).FirstOrDefault();
                     return new ScorecardKpiRowViewModel
                     {
                         Name   = k.Name,
@@ -1036,7 +1044,7 @@ public class HomeController : Controller
         // Bar chart: department performance scores (% On Track from latest entries)
         var latestByKpi = await _db.KpiLogEntries
             .GroupBy(e => e.KpiId)
-            .Select(g => g.OrderByDescending(e => e.LoggedAt).First())
+            .Select(g => g.OrderByDescending(e => e.LoggedAt).ThenByDescending(e => e.Id).First())
             .ToListAsync(cancellationToken);
 
         var latestDict = latestByKpi.ToDictionary(e => e.KpiId);
@@ -1078,13 +1086,17 @@ public class HomeController : Controller
         });
     }
 
-    public async Task<IActionResult> StrategicPlanning(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> StrategicPlanning(
+        bool showArchived = false,
+        CancellationToken cancellationToken = default)
     {
         if (!HasAccess("Admin", "Manager", "Executive")) return Forbid();
         ViewData["Title"] = "Strategic Planning";
+        ViewBag.ShowArchived = showArchived;
 
         var goals = await _db.StrategicGoals
             .Include(g => g.Owner)
+            .Where(g => g.IsArchived == showArchived)
             .OrderBy(g => g.Status).ThenBy(g => g.Title)
             .Select(g => new StrategicGoalCardViewModel
             {
@@ -1094,7 +1106,8 @@ public class HomeController : Controller
                 Perspective = g.Perspective,
                 Status      = g.Status,
                 DueDate     = g.DueDate.HasValue ? g.DueDate.Value.ToString("MMM d, yyyy") : null,
-                OwnerName   = g.Owner != null ? g.Owner.FullName : null
+                OwnerName   = g.Owner != null ? g.Owner.FullName : null,
+                IsArchived  = g.IsArchived
             })
             .ToListAsync(cancellationToken);
 
@@ -1164,6 +1177,33 @@ public class HomeController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> StrategicGoalArchive(int id, CancellationToken cancellationToken)
+    {
+        if (!HasAccess("Admin", "Manager")) return Forbid();
+
+        var goal = await _db.StrategicGoals.FindAsync(new object[] { id }, cancellationToken);
+        if (goal is null) return NotFound();
+
+        var userId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+        goal.IsArchived = !goal.IsArchived;
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = userId,
+            Action = goal.IsArchived ? "Archived Strategic Goal" : "Unarchived Strategic Goal",
+            EntityType = "StrategicGoal", EntityId = goal.Id,
+            Details = goal.Title, OccurredAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        TempData["SuccessMessage"] = goal.IsArchived
+            ? $"Goal <strong>{goal.Title}</strong> archived."
+            : $"Goal <strong>{goal.Title}</strong> restored.";
+        return RedirectToAction(nameof(StrategicPlanning), new { showArchived = goal.IsArchived });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> StrategicGoalEdit(StrategicGoalFormViewModel model, CancellationToken cancellationToken)
     {
         if (!HasAccess("Admin", "Manager")) return Forbid();
@@ -1210,7 +1250,7 @@ public class HomeController : Controller
         // Latest entry per KPI (for overall stats)
         var latestByKpi = await _db.KpiLogEntries
             .GroupBy(e => e.KpiId)
-            .Select(g => g.OrderByDescending(e => e.LoggedAt).First())
+            .Select(g => g.OrderByDescending(e => e.LoggedAt).ThenByDescending(e => e.Id).First())
             .ToListAsync(cancellationToken);
 
         var totalKpis = await _db.Kpis.CountAsync(k => k.IsActive, cancellationToken);
@@ -1311,12 +1351,16 @@ public class HomeController : Controller
         return View();
     }
 
-    public async Task<IActionResult> DepartmentManagement(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> DepartmentManagement(
+        bool showArchived = false,
+        CancellationToken cancellationToken = default)
     {
         if (!HasAccess("Admin", "Administrator")) return Forbid();
         ViewData["Title"] = "Department Management";
+        ViewBag.ShowArchived = showArchived;
 
         var departments = await _db.Departments
+            .Where(d => d.IsArchived == showArchived)
             .OrderBy(d => d.Name)
             .Select(d => new DepartmentRowViewModel
             {
@@ -1325,7 +1369,8 @@ public class HomeController : Controller
                 Description = d.Description,
                 UserCount   = d.Users.Count,
                 KpiCount    = d.Kpis.Count(k => k.IsActive),
-                CreatedAt   = d.CreatedAt.ToString("MMM d, yyyy")
+                CreatedAt   = d.CreatedAt.ToString("MMM d, yyyy"),
+                IsArchived  = d.IsArchived
             })
             .ToListAsync(cancellationToken);
 
@@ -1461,6 +1506,222 @@ public class HomeController : Controller
         return RedirectToAction(nameof(DepartmentManagement));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DepartmentArchive(int id, CancellationToken cancellationToken)
+    {
+        if (!HasAccess("Admin", "Administrator")) return Forbid();
+
+        var dept = await _db.Departments.FindAsync(new object[] { id }, cancellationToken);
+        if (dept is null) return NotFound();
+
+        var userId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+        dept.IsArchived = !dept.IsArchived;
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = userId,
+            Action = dept.IsArchived ? "Archived Department" : "Unarchived Department",
+            EntityType = "Department", EntityId = dept.Id,
+            Details = dept.Name, OccurredAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        TempData["SuccessMessage"] = dept.IsArchived
+            ? $"Department <strong>{dept.Name}</strong> archived."
+            : $"Department <strong>{dept.Name}</strong> restored.";
+        return RedirectToAction(nameof(DepartmentManagement), new { showArchived = dept.IsArchived });
+    }
+
+    // ── User Management ───────────────────────────────────────────────────────
+    public async Task<IActionResult> UserManagement(CancellationToken cancellationToken = default)
+    {
+        if (!HasAccess("Admin", "Administrator")) return Forbid();
+        ViewData["Title"] = "User Management";
+
+        var users = await _db.Users
+            .Include(u => u.Department)
+            .OrderBy(u => u.FullName)
+            .Select(u => new UserRowDetailViewModel
+            {
+                Id             = u.Id,
+                FullName       = u.FullName,
+                Email          = u.Email,
+                Role           = u.Role,
+                DepartmentName = u.Department != null ? u.Department.Name : null,
+                CreatedAt      = u.CreatedAt.ToString("MMM d, yyyy"),
+                IsActive       = u.IsActive,
+                LastLoginAt    = u.LastLoginAt.HasValue ? u.LastLoginAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt") : null
+            })
+            .ToListAsync(cancellationToken);
+
+        return View(new UserManagementListViewModel { Users = users });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> UserCreate(CancellationToken cancellationToken)
+    {
+        if (!HasAccess("Admin", "Administrator")) return Forbid();
+        ViewData["Title"] = "Create User";
+        return View("UserForm", await BuildUserFormAsync(new UserFormViewModel(), cancellationToken));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UserCreate(UserFormViewModel model, CancellationToken cancellationToken)
+    {
+        if (!HasAccess("Admin", "Administrator")) return Forbid();
+        ViewData["Title"] = "Create User";
+
+        // Password required on create
+        if (string.IsNullOrWhiteSpace(model.Password))
+            ModelState.AddModelError(nameof(model.Password), "Password is required when creating a user.");
+
+        // Prevent assigning Admin role through the UI
+        if (model.Role == "Admin")
+        {
+            ModelState.AddModelError(nameof(model.Role), "The Admin role cannot be assigned through User Management.");
+        }
+
+        if (!ModelState.IsValid)
+            return View("UserForm", await BuildUserFormAsync(model, cancellationToken));
+
+        var emailExists = await _db.Users.AnyAsync(u => u.Email == model.Email.Trim(), cancellationToken);
+        if (emailExists)
+        {
+            ModelState.AddModelError(nameof(model.Email), "A user with this email already exists.");
+            return View("UserForm", await BuildUserFormAsync(model, cancellationToken));
+        }
+
+        var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+        var user = new AppUser
+        {
+            FullName     = model.FullName.Trim(),
+            Email        = model.Email.Trim(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password!, workFactor: 11),
+            Role         = model.Role,
+            DepartmentId = model.DepartmentId,
+            IsActive     = model.IsActive,
+            CreatedAt    = DateTime.UtcNow
+        };
+        _db.Users.Add(user);
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId     = actorId,
+            Action     = "Created User",
+            EntityType = "AppUser",
+            Details    = $"{user.FullName} ({user.Email}) — Role: {user.Role}",
+            OccurredAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        TempData["SuccessMessage"] = $"User <strong>{user.FullName}</strong> created successfully.";
+        return RedirectToAction(nameof(UserManagement));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> UserEdit(int id, CancellationToken cancellationToken)
+    {
+        if (!HasAccess("Admin", "Administrator")) return Forbid();
+        ViewData["Title"] = "Edit User";
+
+        var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
+        if (user is null) return NotFound();
+
+        var form = new UserFormViewModel
+        {
+            Id           = user.Id,
+            FullName     = user.FullName,
+            Email        = user.Email,
+            Role         = user.Role,
+            DepartmentId = user.DepartmentId,
+            IsActive     = user.IsActive
+        };
+        return View("UserForm", await BuildUserFormAsync(form, cancellationToken));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UserEdit(UserFormViewModel model, CancellationToken cancellationToken)
+    {
+        if (!HasAccess("Admin", "Administrator")) return Forbid();
+        ViewData["Title"] = "Edit User";
+
+        if (!ModelState.IsValid)
+            return View("UserForm", await BuildUserFormAsync(model, cancellationToken));
+
+        var user = await _db.Users.FindAsync(new object[] { model.Id }, cancellationToken);
+        if (user is null) return NotFound();
+
+        var emailExists = await _db.Users
+            .AnyAsync(u => u.Email == model.Email.Trim() && u.Id != model.Id, cancellationToken);
+        if (emailExists)
+        {
+            ModelState.AddModelError(nameof(model.Email), "A user with this email already exists.");
+            return View("UserForm", await BuildUserFormAsync(model, cancellationToken));
+        }
+
+        // Prevent assigning Admin role through the UI
+        if (model.Role == "Admin")
+        {
+            ModelState.AddModelError(nameof(model.Role), "The Admin role cannot be assigned through User Management.");
+            return View("UserForm", await BuildUserFormAsync(model, cancellationToken));
+        }
+
+        var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+        user.FullName     = model.FullName.Trim();
+        user.Email        = model.Email.Trim();
+        user.Role         = model.Role;
+        user.DepartmentId = model.DepartmentId;
+        user.IsActive     = model.IsActive;
+
+        if (!string.IsNullOrWhiteSpace(model.Password))
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password, workFactor: 11);
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId     = actorId,
+            Action     = "Updated User",
+            EntityType = "AppUser",
+            EntityId   = user.Id,
+            Details    = $"{user.FullName} ({user.Email}) — Role: {user.Role}",
+            OccurredAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        TempData["SuccessMessage"] = $"User <strong>{user.FullName}</strong> updated successfully.";
+        return RedirectToAction(nameof(UserManagement));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UserToggleActive(int id, CancellationToken cancellationToken)
+    {
+        if (!HasAccess("Admin", "Administrator")) return Forbid();
+
+        var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
+        if (user is null) return NotFound();
+
+        var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+        user.IsActive = !user.IsActive;
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId     = actorId,
+            Action     = user.IsActive ? "Activated User" : "Deactivated User",
+            EntityType = "AppUser",
+            EntityId   = user.Id,
+            Details    = $"{user.FullName} set to {(user.IsActive ? "Active" : "Inactive")}.",
+            OccurredAt = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        TempData["SuccessMessage"] = user.IsActive
+            ? $"User <strong>{user.FullName}</strong> activated."
+            : $"User <strong>{user.FullName}</strong> deactivated.";
+        return RedirectToAction(nameof(UserManagement));
+    }
+
     public async Task<IActionResult> AuditLog(CancellationToken cancellationToken = default)
     {
         if (!HasAccess("Admin")) return Forbid();
@@ -1499,6 +1760,16 @@ public class HomeController : Controller
                 Unit        = k.Unit
             })
             .ToListAsync(ct);
+
+    private async Task<UserFormViewModel> BuildUserFormAsync(UserFormViewModel model, CancellationToken ct)
+    {
+        model.Departments = await _db.Departments
+            .Where(d => !d.IsArchived)
+            .OrderBy(d => d.Name)
+            .Select(d => new DepartmentOptionViewModel { Id = d.Id, Name = d.Name })
+            .ToListAsync(ct);
+        return model;
+    }
 
     private async Task<KpiFormViewModel> BuildKpiFormAsync(KpiFormViewModel model, CancellationToken ct)
     {

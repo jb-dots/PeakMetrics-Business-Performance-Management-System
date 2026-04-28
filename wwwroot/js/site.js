@@ -68,11 +68,10 @@
 
         if (count > 0) {
             badge.textContent = String(count);
-            badge.classList.remove("d-none");
-            return;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
         }
-
-        badge.classList.add("d-none");
     }
 
     function markAllNotificationsAsRead() {
@@ -215,6 +214,11 @@
         function openPanel() {
             panel.hidden = false;
             toggle.setAttribute("aria-expanded", "true");
+
+            // Hide the badge once the user opens the panel (they've "seen" it)
+            // but do NOT mark notifications as read
+            updateTopbarNotificationBadge(0);
+            setStoredUnreadCount(0);
 
             var items = getQuickItems();
             if (items.length > 0) {

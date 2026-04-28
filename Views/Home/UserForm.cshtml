@@ -1,0 +1,159 @@
+@model PeakMetrics.Web.ViewModels.UserFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+
+    var roles = new[]
+    {
+        new { Value = "Administrator", Icon = "bi-shield-fill",       Label = "Administrator", Description = "Manages users and departments. Can create and edit KPIs but cannot access audit logs." },
+        new { Value = "Manager",       Icon = "bi-person-badge-fill", Label = "Manager",       Description = "Oversees KPI performance across departments. Can log entries and view analytics." },
+        new { Value = "User",          Icon = "bi-person-fill",       Label = "User",          Description = "Standard staff member. Can log KPI entries for their assigned department." },
+        new { Value = "Executive",     Icon = "bi-briefcase-fill",    Label = "Executive",     Description = "Read-only executive view. Sees high-level dashboards and strategic reports." },
+    };
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-7">
+        <div class="card card-clean">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-1">@(isEdit ? "Edit User" : "Create New User")</h5>
+                <p class="text-muted small mb-4">
+                    @(isEdit
+                        ? "Update the user's details. Leave the password blank to keep the current password."
+                        : "Create a new user account. A password is required.")
+                </p>
+
+                <form asp-controller="Home" asp-action="@(isEdit ? "UserEdit" : "UserCreate")" method="post">
+                    @Html.AntiForgeryToken()
+                    @if (isEdit) { <input type="hidden" asp-for="Id" /> }
+
+                    @* ── Full Name ── *@
+                    <div class="mb-3">
+                        <label asp-for="FullName" class="form-label fw-semibold">Full Name</label>
+                        <input asp-for="FullName" class="form-control" placeholder="e.g., Maria Santos" />
+                        <span asp-validation-for="FullName" class="text-danger small"></span>
+                    </div>
+
+                    @* ── Email ── *@
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label fw-semibold">Email Address</label>
+                        <input asp-for="Email" type="email" class="form-control" placeholder="e.g., maria@company.com" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+
+                    @* ── Password ── *@
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label fw-semibold">
+                            Password
+                            @if (isEdit)
+                            {
+                                <span class="text-muted fw-normal">(optional)</span>
+                            }
+                        </label>
+                        <input asp-for="Password" type="password" class="form-control"
+                               placeholder="@(isEdit ? "Leave blank to keep current password" : "Minimum 6 characters")" />
+                        @if (isEdit)
+                        {
+                            <div class="form-text text-muted">Leave blank to keep the current password.</div>
+                        }
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+
+                    @* ── Role Cards ── *@
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Role</label>
+                        <p class="text-muted small mb-2">Select the role that defines this user's access level.</p>
+                        <input type="hidden" asp-for="Role" id="roleHiddenField" />
+                        <div class="row g-2" id="roleCardGrid">
+                            @foreach (var role in roles)
+                            {
+                                var isSelected = Model.Role == role.Value;
+                                <div class="col-12 col-md-6">
+                                    <label class="unit-card @(isSelected ? "unit-card-selected" : "")"
+                                           data-role="@role.Value"
+                                           style="align-items:flex-start;text-align:left;padding:0.85rem 1rem;">
+                                        <input type="radio" name="roleRadio" value="@role.Value" class="d-none role-radio"
+                                               @(isSelected ? "checked" : "") />
+                                        <span class="unit-card-icon" style="margin-bottom:0.25rem;"><i class="bi @role.Icon"></i></span>
+                                        <span class="unit-card-label">@role.Label</span>
+                                        <span class="unit-card-example" style="white-space:normal;">@role.Description</span>
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                        <div id="roleValidationMsg" class="text-danger small mt-1 d-none">Please select a role.</div>
+                        <span asp-validation-for="Role" class="text-danger small"></span>
+                    </div>
+
+                    @* ── Department ── *@
+                    <div class="mb-3">
+                        <label asp-for="DepartmentId" class="form-label fw-semibold">
+                            Department <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <select asp-for="DepartmentId" class="form-select">
+                            <option value="">— No Department —</option>
+                            @foreach (var dept in Model.Departments)
+                            {
+                                <option value="@dept.Id" selected="@(Model.DepartmentId == dept.Id ? "selected" : null)">@dept.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="DepartmentId" class="text-danger small"></span>
+                    </div>
+
+                    @* ── Active toggle (edit only) ── *@
+                    @if (isEdit)
+                    {
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" />
+                                <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
+                                <div class="text-muted small">Inactive users cannot sign in.</div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a asp-controller="Home" asp-action="UserManagement" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-floppy"></i>
+                            @(isEdit ? "Save Changes" : "Create User")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var cards      = document.querySelectorAll('.unit-card[data-role]');
+    var hidden     = document.getElementById('roleHiddenField');
+    var roleError  = document.getElementById('roleValidationMsg');
+    var form       = document.querySelector('form');
+
+    function selectCard(card) {
+        cards.forEach(function (c) { c.classList.remove('unit-card-selected'); });
+        card.classList.add('unit-card-selected');
+        card.querySelector('.role-radio').checked = true;
+        hidden.value = card.getAttribute('data-role');
+        roleError.classList.add('d-none');
+    }
+
+    cards.forEach(function (card) {
+        card.addEventListener('click', function () { selectCard(card); });
+    });
+
+    form.addEventListener('submit', function (e) {
+        if (!hidden.value) {
+            roleError.classList.remove('d-none');
+            e.preventDefault();
+        }
+    });
+
+    // Init on page load (edit mode)
+    var preSelected = document.querySelector('.unit-card[data-role].unit-card-selected');
+    if (preSelected) selectCard(preSelected);
+})();
+</script>
+}

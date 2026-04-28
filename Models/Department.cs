@@ -10,6 +10,8 @@ public sealed class Department
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public bool IsArchived { get; set; } = false;
+
     // Navigation
     public ICollection<AppUser> Users { get; set; } = new List<AppUser>();
     public ICollection<Kpi> Kpis { get; set; } = new List<Kpi>();

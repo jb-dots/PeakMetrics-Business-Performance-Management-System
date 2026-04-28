@@ -19,3 +19,10 @@ obj/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Publish output
+publish/
+
+# Secrets — never commit these
+appsettings.Production.json
+deploy.secrets.bat

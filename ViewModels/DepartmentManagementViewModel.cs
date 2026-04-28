@@ -15,6 +15,7 @@ public sealed class DepartmentRowViewModel
     public int     UserCount   { get; init; }
     public int     KpiCount    { get; init; }
     public string  CreatedAt   { get; init; } = string.Empty;
+    public bool    IsArchived  { get; init; }
 }
 
 public sealed class DepartmentFormViewModel

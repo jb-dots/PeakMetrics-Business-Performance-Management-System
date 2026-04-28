@@ -1,0 +1,146 @@
+@model PeakMetrics.Web.ViewModels.UserManagementListViewModel
+
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@Html.Raw(successMsg)</span>
+    </div>
+}
+@if (TempData["ErrorMessage"] is string errorMsg)
+{
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>@Html.Raw(errorMsg)</span>
+    </div>
+}
+
+<div class="card card-clean mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-md-7">
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute" style="left:12px;top:50%;transform:translateY(-50%);color:#6b7280;"></i>
+                    <input type="text" class="form-control ps-5" id="userSearch" placeholder="Search by name or email..." />
+                </div>
+            </div>
+            <div class="col-12 col-md-5 text-md-end">
+                <a asp-controller="Home" asp-action="UserCreate"
+                   class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-person-plus"></i> Add User
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card card-clean">
+    <div class="card-body">
+        @if (!Model.Users.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
+                <h5 class="fw-semibold">No users yet</h5>
+                <p class="mb-3 small">Add your first user to get started.</p>
+                <a asp-controller="Home" asp-action="UserCreate" class="btn btn-primary-custom btn-sm">
+                    <i class="bi bi-person-plus me-1"></i> Add User
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="userTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Last Login</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.Users)
+                        {
+                            var roleBadgeClass = user.Role switch
+                            {
+                                "Admin"         => "bg-danger",
+                                "Administrator" => "bg-warning text-dark",
+                                "Manager"       => "bg-primary",
+                                "Executive"     => "bg-purple",
+                                _               => "bg-secondary"
+                            };
+                            <tr data-search="@($"{user.FullName} {user.Email}".ToLower())">
+                                <td class="fw-semibold">@user.FullName</td>
+                                <td class="text-muted small">@user.Email</td>
+                                <td>
+                                    <span class="badge @roleBadgeClass">@user.Role</span>
+                                </td>
+                                <td class="text-muted small">@(user.DepartmentName ?? "—")</td>
+                                <td class="text-muted small">@(user.LastLoginAt ?? "Never")</td>
+                                <td class="text-center">
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <a asp-controller="Home" asp-action="UserEdit" asp-route-id="@user.Id"
+                                           class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        <form asp-controller="Home" asp-action="UserToggleActive" asp-route-id="@user.Id"
+                                              method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit"
+                                                    class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                                    title="@(user.IsActive ? "Deactivate" : "Activate")">
+                                                <i class="bi @(user.IsActive ? "bi-person-dash" : "bi-person-check")"></i>
+                                                @(user.IsActive ? "Deactivate" : "Activate")
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div id="noUserResults" class="text-center text-muted py-4" style="display:none;">
+                No users found matching your search.
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var searchInput = document.getElementById('userSearch');
+    var rows        = document.querySelectorAll('#userTable tbody tr');
+    var noResults   = document.getElementById('noUserResults');
+
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', function () {
+        var q = this.value.toLowerCase().trim();
+        var visible = 0;
+        rows.forEach(function (row) {
+            var text = row.getAttribute('data-search') || '';
+            var show = !q || text.includes(q);
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+    });
+})();
+</script>
+}

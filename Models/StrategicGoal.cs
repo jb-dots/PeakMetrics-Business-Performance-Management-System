@@ -19,6 +19,8 @@ public sealed class StrategicGoal
 
     public int? OwnerUserId { get; set; }
 
+    public bool IsArchived { get; set; } = false;
+
     // Navigation
     public AppUser? Owner { get; set; }
 }

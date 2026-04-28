@@ -2,8 +2,10 @@
 @using PeakMetrics.Web.ViewModels
 @{
     var kpis = (ViewBag.Kpis as List<KpiDetailDto>) ?? new List<KpiDetailDto>();
+    var preSelected = kpis.FirstOrDefault(k => k.Id == Model.KpiId);
+    var hasPreSelected = preSelected != null;
 
-    // Generate period options: current quarter + last 5 quarters
+    // Period options
     var periods = new List<string>();
     var now = DateTime.Today;
     var year = now.Year;
@@ -14,228 +16,289 @@
         quarter--;
         if (quarter == 0) { quarter = 4; year--; }
     }
+
+    // Currency symbols for prefix display
+    var currencySymbols = new Dictionary<string, string>
+    {
+        ["PHP"]="₱",["USD"]="$",["EUR"]="€",["GBP"]="£",["JPY"]="¥",["CNY"]="¥",
+        ["AUD"]="A$",["CAD"]="C$",["SGD"]="S$",["HKD"]="HK$",["KRW"]="₩",["INR"]="₹",
+        ["MYR"]="RM",["THB"]="฿",["IDR"]="Rp",["VND"]="₫",["SAR"]="﷼",["AED"]="د.إ",
+        ["CHF"]="Fr",["BRL"]="R$"
+    };
+
+    string GetPrefix(string unit) => currencySymbols.TryGetValue(unit ?? "", out var s) ? s
+        : unit == "%" ? "%" : unit == "score" ? "★" : unit == "days" ? "d" : unit == "hrs" ? "h" : "#";
 }
 
 <div class="row justify-content-center">
-    <div class="col-12 col-lg-7">
-
+    <div class="col-12 col-lg-6">
         <div class="card card-clean">
             <div class="card-body p-4">
                 <h5 class="card-title mb-1">Log KPI Entry</h5>
-                <p class="text-muted small mb-4">Select a KPI, enter the actual value for the period, and the system will compute the status automatically.</p>
+                <p class="text-muted small mb-4">
+                    @(hasPreSelected
+                        ? $"Logging actual value for {preSelected!.Name}."
+                        : "Select a KPI and enter the actual value. The system computes the status automatically.")
+                </p>
 
-                <form asp-controller="Home" asp-action="KPILogEntry" method="post" id="kpiLogForm">
+                <form asp-controller="Home" asp-action="KPILogEntry" method="post">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="KpiId" id="kpiIdHidden" />
 
-                    @* ── KPI selector ── *@
-                    <div class="mb-4">
-                        <label asp-for="KpiId" class="form-label fw-semibold">KPI</label>
-                        <select asp-for="KpiId" class="form-select" id="kpiSelect" required>
-                            <option value="">— Select a KPI —</option>
-                            @foreach (var kpi in kpis)
-                            {
-                                var isSelected = Model.KpiId == kpi.Id;
-                                <option value="@kpi.Id"
-                                        data-target="@kpi.Target"
-                                        data-unit="@kpi.Unit"
-                                        data-department="@kpi.Department"
-                                        data-perspective="@kpi.Perspective"
-                                        selected="@(isSelected ? "selected" : null)">
-                                    @kpi.Name (@kpi.Department)
-                                </option>
-                            }
-                        </select>
-                        <span asp-validation-for="KpiId" class="text-danger small"></span>
-                    </div>
+                    @if (hasPreSelected)
+                    {
+                        @* ── Pre-selected KPI card — no dropdown needed ── *@
+                        <div class="kpi-log-selected-card mb-4">
+                            <div class="kpi-log-selected-header">
+                                <div>
+                                    <div class="kpi-log-selected-name">@preSelected!.Name</div>
+                                    <div class="kpi-log-selected-meta">@preSelected.Department · @preSelected.Perspective</div>
+                                </div>
+                                <a asp-controller="Home" asp-action="KPILogEntry"
+                                   class="kpi-log-change-btn" title="Choose a different KPI">
+                                    Change
+                                </a>
+                            </div>
+                            <div class="kpi-log-selected-target">
+                                <span class="kpi-log-target-label">Target</span>
+                                <span class="kpi-log-target-value">@preSelected.Target @preSelected.Unit</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @* ── KPI selector (only shown when no pre-selection) ── *@
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Select KPI</label>
+                            <div class="row g-2" id="kpiCardGrid">
+                                @foreach (var kpi in kpis)
+                                {
+                                    var isSelected = Model.KpiId == kpi.Id;
+                                    <div class="col-12 col-md-6">
+                                        <label class="kpi-select-card @(isSelected ? "kpi-select-card-active" : "")"
+                                               data-kpi-id="@kpi.Id"
+                                               data-target="@kpi.Target"
+                                               data-unit="@kpi.Unit"
+                                               data-department="@kpi.Department"
+                                               data-perspective="@kpi.Perspective">
+                                            <div class="kpi-select-card-name">@kpi.Name</div>
+                                            <div class="kpi-select-card-meta">@kpi.Department · @kpi.Perspective</div>
+                                            <div class="kpi-select-card-target">Target: @kpi.Target @kpi.Unit</div>
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                            <span class="text-danger small" id="kpiSelectError"></span>
+                        </div>
 
-                    @* ── KPI detail panel (shown after selection) ── *@
-                    <div id="kpiDetailPanel" class="kpi-detail-panel mb-4 @(Model.KpiId > 0 ? "" : "d-none")">
-                        <div class="row g-2">
-                            <div class="col-6 col-md-3">
-                                <div class="kpi-detail-item">
-                                    <span class="kpi-detail-label">Department</span>
-                                    <span class="kpi-detail-value" id="detailDepartment">—</span>
+                        @* KPI detail panel — shown after card selection *@
+                        <div id="kpiDetailPanel" class="kpi-detail-panel mb-4 @(Model.KpiId > 0 ? "" : "d-none")">
+                            <div class="row g-2">
+                                <div class="col-6 col-md-3">
+                                    <div class="kpi-detail-item">
+                                        <span class="kpi-detail-label">Department</span>
+                                        <span class="kpi-detail-value" id="detailDepartment">—</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <div class="kpi-detail-item">
-                                    <span class="kpi-detail-label">Perspective</span>
-                                    <span class="kpi-detail-value" id="detailPerspective">—</span>
+                                <div class="col-6 col-md-3">
+                                    <div class="kpi-detail-item">
+                                        <span class="kpi-detail-label">Perspective</span>
+                                        <span class="kpi-detail-value" id="detailPerspective">—</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <div class="kpi-detail-item">
-                                    <span class="kpi-detail-label">Target</span>
-                                    <span class="kpi-detail-value fw-bold text-primary" id="detailTarget">—</span>
+                                <div class="col-6 col-md-3">
+                                    <div class="kpi-detail-item">
+                                        <span class="kpi-detail-label">Target</span>
+                                        <span class="kpi-detail-value fw-bold text-primary" id="detailTarget">—</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <div class="kpi-detail-item">
-                                    <span class="kpi-detail-label">Unit</span>
-                                    <span class="kpi-detail-value" id="detailUnit">—</span>
+                                <div class="col-6 col-md-3">
+                                    <div class="kpi-detail-item">
+                                        <span class="kpi-detail-label">Unit</span>
+                                        <span class="kpi-detail-value" id="detailUnit">—</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    }
 
                     @* ── Actual value ── *@
                     <div class="mb-4">
                         <label asp-for="ActualValue" class="form-label fw-semibold">
                             Actual Value
-                            <span class="text-muted fw-normal" id="unitHint"></span>
+                            @if (hasPreSelected)
+                            {
+                                <span class="text-muted fw-normal small">(@preSelected!.Unit)</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted fw-normal small" id="unitHint"></span>
+                            }
                         </label>
                         <div class="input-group">
+                            <span class="input-group-text fw-semibold" id="unitPrefix" style="min-width:48px;justify-content:center;">
+                                @(hasPreSelected ? GetPrefix(preSelected!.Unit) : "#")
+                            </span>
                             <input asp-for="ActualValue"
-                                   type="number"
-                                   step="0.01"
-                                   min="0"
-                                   class="form-control"
+                                   type="number" step="0.01" min="0"
+                                   class="form-control form-control-lg"
                                    id="actualValueInput"
-                                   placeholder="Enter the measured value"
+                                   placeholder="Enter measured value"
                                    required />
-                            <span class="input-group-text" id="unitSuffix">—</span>
                         </div>
                         <span asp-validation-for="ActualValue" class="text-danger small"></span>
-                        <div id="statusPreview" class="mt-2 d-none">
+                        <div id="statusPreview" class="mt-2 @(Model.ActualValue > 0 ? "" : "d-none")">
                             <small>Computed status: <span id="statusBadge" class="status-badge"></span></small>
                         </div>
                     </div>
 
-                    @* ── Period + Date ── *@
-                    <div class="row mb-4">
-                        <div class="col-12 col-md-6">
-                            <label asp-for="Period" class="form-label fw-semibold">Period</label>
-                            <select asp-for="Period" class="form-select" required>
-                                @foreach (var p in periods)
-                                {
-                                    var isSelected = Model.Period == p || (string.IsNullOrEmpty(Model.Period) && p == periods[0]);
-                                    <option value="@p" selected="@(isSelected ? "selected" : null)">@p</option>
-                                }
-                            </select>
-                            <span asp-validation-for="Period" class="text-danger small"></span>
+                    @* ── Period ── *@
+                    <div class="mb-4">
+                        <label asp-for="Period" class="form-label fw-semibold">Reporting Period</label>
+                        <div class="d-flex flex-wrap gap-2" id="periodCards">
+                            @foreach (var p in periods)
+                            {
+                                var isSelected = Model.Period == p || (string.IsNullOrEmpty(Model.Period) && p == periods[0]);
+                                <label class="period-card @(isSelected ? "period-card-active" : "")">
+                                    <input type="radio" name="Period" value="@p" class="d-none"
+                                           @(isSelected ? "checked" : "") />
+                                    @p
+                                </label>
+                            }
                         </div>
-                        <div class="col-12 col-md-6">
-                            <label asp-for="LoggedAt" class="form-label fw-semibold">Date Logged</label>
-                            <input asp-for="LoggedAt"
-                                   type="date"
-                                   class="form-control"
-                                   value="@Model.LoggedAt.ToString("yyyy-MM-dd")"
-                                   required />
-                            <span asp-validation-for="LoggedAt" class="text-danger small"></span>
-                        </div>
+                        <span asp-validation-for="Period" class="text-danger small"></span>
                     </div>
 
-                    @* ── Notes ── *@
-                    <div class="mb-4">
-                        <label asp-for="Notes" class="form-label fw-semibold">
-                            Notes <span class="text-muted fw-normal">(optional)</span>
-                        </label>
-                        <textarea asp-for="Notes"
-                                  class="form-control"
-                                  rows="3"
-                                  placeholder="Any context, observations, or reasons for variance..."></textarea>
+                    @* ── Date + Notes ── *@
+                    <div class="row mb-4">
+                        <div class="col-12 col-md-6">
+                            <label asp-for="LoggedAt" class="form-label fw-semibold">Date Logged</label>
+                            <input asp-for="LoggedAt" type="date" class="form-control"
+                                   value="@Model.LoggedAt.ToString("yyyy-MM-dd")" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Notes" class="form-label fw-semibold">
+                                Notes <span class="text-muted fw-normal">(optional)</span>
+                            </label>
+                            <textarea asp-for="Notes" class="form-control" rows="2"
+                                      placeholder="Context or observations..."></textarea>
+                        </div>
                     </div>
 
                     <div class="d-flex gap-2 justify-content-end">
                         <a asp-controller="Home" asp-action="KPITracking" class="btn btn-outline-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
-                            <i class="bi bi-floppy"></i>
-                            Save Entry
+                            <i class="bi bi-floppy"></i> Save Entry
                         </button>
                     </div>
                 </form>
             </div>
         </div>
-
     </div>
 </div>
 
 @section Scripts {
 <script>
 (function () {
-    const select       = document.getElementById('kpiSelect');
-    const panel        = document.getElementById('kpiDetailPanel');
-    const detailDept   = document.getElementById('detailDepartment');
-    const detailPersp  = document.getElementById('detailPerspective');
-    const detailTarget = document.getElementById('detailTarget');
-    const detailUnit   = document.getElementById('detailUnit');
-    const unitSuffix   = document.getElementById('unitSuffix');
-    const unitHint     = document.getElementById('unitHint');
-    const actualInput  = document.getElementById('actualValueInput');
-    const statusPreview= document.getElementById('statusPreview');
-    const statusBadge  = document.getElementById('statusBadge');
+    var hidden       = document.getElementById('kpiIdHidden');
+    var actualInput  = document.getElementById('actualValueInput');
+    var statusPreview= document.getElementById('statusPreview');
+    var statusBadge  = document.getElementById('statusBadge');
+    var unitPrefix   = document.getElementById('unitPrefix');
+    var unitHint     = document.getElementById('unitHint');
+    var panel        = document.getElementById('kpiDetailPanel');
 
-    let currentTarget = null;
-    let currentUnit   = '';
-    let lowerIsBetter = false;
+    var currentTarget = @(hasPreSelected ? preSelected!.Target.ToString() : "null");
+    var currentUnit   = '@(hasPreSelected ? preSelected!.Unit : "")';
+    var lowerIsBetter = @(hasPreSelected
+        ? (preSelected!.Unit == "days" || preSelected.Name.Contains("Turnover", StringComparison.OrdinalIgnoreCase) || preSelected.Name.Contains("Defect", StringComparison.OrdinalIgnoreCase) || preSelected.Name.Contains("Cycle", StringComparison.OrdinalIgnoreCase) ? "true" : "false")
+        : "false");
 
-    function updatePanel(opt) {
-        if (!opt || !opt.value) {
-            panel.classList.add('d-none');
-            unitSuffix.textContent = '—';
-            unitHint.textContent   = '';
-            statusPreview.classList.add('d-none');
-            currentTarget = null;
-            return;
-        }
+    var currencySymbols = {
+        'PHP':'₱','USD':'$','EUR':'€','GBP':'£','JPY':'¥','CNY':'¥',
+        'AUD':'A$','CAD':'C$','SGD':'S$','HKD':'HK$','KRW':'₩','INR':'₹',
+        'MYR':'RM','THB':'฿','IDR':'Rp','VND':'₫','SAR':'﷼','AED':'د.إ','CHF':'Fr','BRL':'R$'
+    };
 
-        const target = parseFloat(opt.dataset.target);
-        const unit   = opt.dataset.unit || '';
-        const dept   = opt.dataset.department || '—';
-        const persp  = opt.dataset.perspective || '—';
-
-        detailDept.textContent   = dept;
-        detailPersp.textContent  = persp;
-        detailTarget.textContent = target + ' ' + unit;
-        detailUnit.textContent   = unit;
-        unitSuffix.textContent   = unit || '—';
-        unitHint.textContent     = unit ? `(${unit})` : '';
-
-        currentTarget = target;
-        currentUnit   = unit;
-        lowerIsBetter = unit === 'days'
-            || opt.text.toLowerCase().includes('turnover')
-            || opt.text.toLowerCase().includes('defect')
-            || opt.text.toLowerCase().includes('cycle');
-
-        panel.classList.remove('d-none');
-        updateStatusPreview();
+    function getPrefix(unit) {
+        if (currencySymbols[unit]) return currencySymbols[unit];
+        if (unit === '%') return '%';
+        if (unit === 'score') return '★';
+        if (unit === 'days') return 'd';
+        if (unit === 'hrs') return 'h';
+        return '#';
     }
 
     function computeStatus(actual) {
         if (currentTarget === null || isNaN(actual)) return null;
         if (lowerIsBetter) {
-            if (actual <= currentTarget)              return 'On Track';
-            if (actual <= currentTarget * 1.25)       return 'At Risk';
+            if (actual <= currentTarget)        return 'On Track';
+            if (actual <= currentTarget * 1.25) return 'At Risk';
             return 'Behind';
         }
-        if (actual >= currentTarget)                  return 'On Track';
-        if (actual >= currentTarget * 0.85)           return 'At Risk';
+        if (actual >= currentTarget)            return 'On Track';
+        if (actual >= currentTarget * 0.85)     return 'At Risk';
         return 'Behind';
     }
 
     function updateStatusPreview() {
-        const actual = parseFloat(actualInput.value);
-        const status = computeStatus(actual);
-        if (!status) { statusPreview.classList.add('d-none'); return; }
-
+        if (!actualInput) return;
+        var actual = parseFloat(actualInput.value);
+        var status = computeStatus(actual);
+        if (!status || isNaN(actual)) { statusPreview.classList.add('d-none'); return; }
         statusPreview.classList.remove('d-none');
-        statusBadge.textContent  = status;
-        statusBadge.className    = 'status-badge ' + {
-            'On Track': 'status-ontrack',
-            'At Risk':  'status-atrisk',
-            'Behind':   'status-behind'
-        }[status];
+        statusBadge.textContent = status;
+        statusBadge.className = 'status-badge ' + {'On Track':'status-ontrack','At Risk':'status-atrisk','Behind':'status-behind'}[status];
     }
 
-    select.addEventListener('change', function () {
-        updatePanel(this.options[this.selectedIndex]);
+    if (actualInput) actualInput.addEventListener('input', updateStatusPreview);
+
+    // KPI card selection (only when no pre-selection)
+    var kpiCards = document.querySelectorAll('.kpi-select-card');
+    kpiCards.forEach(function (card) {
+        card.addEventListener('click', function () {
+            kpiCards.forEach(function (c) { c.classList.remove('kpi-select-card-active'); });
+            card.classList.add('kpi-select-card-active');
+
+            var id    = card.dataset.kpiId;
+            var tgt   = parseFloat(card.dataset.target);
+            var unit  = card.dataset.unit || '';
+            var dept  = card.dataset.department || '—';
+            var persp = card.dataset.perspective || '—';
+
+            hidden.value = id;
+            currentTarget = tgt;
+            currentUnit   = unit;
+            lowerIsBetter = unit === 'days'
+                || card.querySelector('.kpi-select-card-name').textContent.toLowerCase().includes('turnover')
+                || card.querySelector('.kpi-select-card-name').textContent.toLowerCase().includes('defect')
+                || card.querySelector('.kpi-select-card-name').textContent.toLowerCase().includes('cycle');
+
+            if (unitPrefix) unitPrefix.textContent = getPrefix(unit);
+            if (unitHint)   unitHint.textContent   = unit ? '(' + unit + ')' : '';
+
+            if (panel) {
+                panel.classList.remove('d-none');
+                document.getElementById('detailDepartment').textContent  = dept;
+                document.getElementById('detailPerspective').textContent = persp;
+                document.getElementById('detailTarget').textContent      = tgt + ' ' + unit;
+                document.getElementById('detailUnit').textContent        = unit;
+            }
+
+            updateStatusPreview();
+        });
     });
 
-    actualInput.addEventListener('input', updateStatusPreview);
+    // Period card selection
+    document.querySelectorAll('.period-card').forEach(function (card) {
+        card.addEventListener('click', function () {
+            document.querySelectorAll('.period-card').forEach(function (c) { c.classList.remove('period-card-active'); });
+            card.classList.add('period-card-active');
+        });
+    });
 
-    // Init on page load if KPI already selected (e.g. validation failure)
-    if (select.value) updatePanel(select.options[select.selectedIndex]);
+    // Init status preview if value already set
+    updateStatusPreview();
 })();
 </script>
 }

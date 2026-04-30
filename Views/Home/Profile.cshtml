@@ -1,94 +1,129 @@
+@model PeakMetrics.Web.ViewModels.ProfileViewModel
 @{
-    var recentHighlights = new[]
+    var roleColor = Model.Role switch
     {
-        new { Label = "KPIs Managed", Value = "48" },
-        new { Label = "Reports Generated", Value = "12" },
-        new { Label = "Audit Actions", Value = "87" },
-        new { Label = "Teams Covered", Value = "6" }
-    };
-
-    var responsibilities = new[]
-    {
-        "Review at-risk KPIs every morning",
-        "Approve strategic initiatives and deadlines",
-        "Generate monthly executive performance reports",
-        "Coordinate with department heads on corrective actions"
+        "Admin"         => "#dc2626",
+        "Administrator" => "#d97706",
+        "Manager"       => "#2563eb",
+        "Executive"     => "#7c3aed",
+        _               => "#64748b"
     };
 }
 
+@if (TempData["SuccessMessage"] is string successMsg)
+{
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>@Html.Raw(successMsg)</span>
+    </div>
+}
+
 <div class="row g-4">
+    <!-- ── Profile card ── -->
     <div class="col-12 col-xl-4">
-        <div class="card card-clean profile-card h-100">
-            <div class="profile-header p-4 text-white">
-                <div class="profile-avatar mb-3">JD</div>
-                <h5 class="mb-1 fw-semibold">John Dutaro</h5>
-                <p class="mb-0 opacity-75">PeakMetrics System Owner</p>
+        <div class="card card-clean h-100 overflow-hidden">
+            <div class="p-4 text-white d-flex flex-column align-items-center text-center"
+                 style="background: linear-gradient(135deg, #1b4fd8 0%, #1e40af 100%);">
+                <div class="profile-avatar mb-3" style="width:64px;height:64px;font-size:1.4rem;">
+                    @Model.Initials
+                </div>
+                <h5 class="mb-1 fw-semibold">@Model.FullName</h5>
+                <span class="badge rounded-pill px-3 py-1 mt-1"
+                      style="background:rgba(255,255,255,0.2);font-size:0.8rem;">
+                    @Model.Role
+                </span>
             </div>
             <div class="card-body p-4">
                 <div class="profile-info-row">
-                    <span class="text-muted">Email</span>
-                    <span class="fw-semibold">john.dutaro@peakmetrics.com</span>
+                    <span class="text-muted small">Email</span>
+                    <span class="fw-semibold small text-truncate" style="max-width:180px;">@Model.Email</span>
                 </div>
                 <div class="profile-info-row">
-                    <span class="text-muted">Department</span>
-                    <span class="fw-semibold">Business Intelligence</span>
+                    <span class="text-muted small">Department</span>
+                    <span class="fw-semibold small">@(Model.DepartmentName ?? "—")</span>
                 </div>
                 <div class="profile-info-row">
-                    <span class="text-muted">Role</span>
-                    <span class="fw-semibold">Administrator</span>
-                </div>
-                <div class="profile-info-row">
-                    <span class="text-muted">Timezone</span>
-                    <span class="fw-semibold">GMT+8</span>
+                    <span class="text-muted small">Role</span>
+                    <span class="badge rounded-pill" style="background:@(roleColor)22;color:@roleColor;font-size:0.75rem;">
+                        @Model.Role
+                    </span>
                 </div>
                 <div class="profile-info-row mb-0 pb-0 border-0">
-                    <span class="text-muted">Last login</span>
-                    <span class="fw-semibold">Today, 08:12 AM</span>
+                    <span class="text-muted small">Last login</span>
+                    <span class="fw-semibold small">@(Model.LastLoginAt ?? "Never")</span>
                 </div>
-
-                <a asp-controller="Home" asp-action="Notifications" class="btn btn-primary-custom w-100 mt-4">
-                    View Notifications
-                </a>
             </div>
         </div>
     </div>
 
+    <!-- ── Edit form ── -->
     <div class="col-12 col-xl-8">
-        <div class="card card-clean mb-4">
+        <div class="card card-clean">
             <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                    <h5 class="mb-0 fw-semibold">Access Scope</h5>
-                    <span class="badge text-bg-light border">Full Platform Access</span>
-                </div>
-                <p class="text-muted mb-4">
-                    You can manage KPI definitions, approve strategic goals, audit activity logs, and publish executive reports across all departments.
-                </p>
+                <h5 class="card-title mb-1">Edit Profile</h5>
+                <p class="text-muted small mb-4">Update your name, email, or password. Leave password fields blank to keep your current password.</p>
 
-                <h6 class="fw-semibold mb-3">Current Responsibilities</h6>
-                <div class="d-flex flex-column gap-2">
-                    @foreach (var item in responsibilities)
-                    {
-                        <div class="profile-list-item">
-                            <i class="bi bi-check2-circle text-primary"></i>
-                            <span>@item</span>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
+                <form asp-controller="Home" asp-action="Profile" method="post">
+                    @Html.AntiForgeryToken()
 
-        <div class="row g-3">
-            @foreach (var item in recentHighlights)
-            {
-                <div class="col-12 col-sm-6">
-                    <div class="card card-clean h-100">
-                        <div class="card-body p-4">
-                            <p class="text-muted mb-1">@item.Label</p>
-                            <h3 class="mb-0 fw-bold">@item.Value</h3>
-                        </div>
+                    @* ── Name ── *@
+                    <div class="mb-3">
+                        <label asp-for="NewFullName" class="form-label fw-semibold">Full Name</label>
+                        <input asp-for="NewFullName"
+                               class="form-control @(ViewData.ModelState["NewFullName"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="Your full name" />
+                        <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.NewFullName)</div>
                     </div>
-                </div>
-            }
+
+                    @* ── Email ── *@
+                    <div class="mb-4">
+                        <label asp-for="NewEmail" class="form-label fw-semibold">Email Address</label>
+                        <input asp-for="NewEmail" type="email"
+                               class="form-control @(ViewData.ModelState["NewEmail"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="your@email.com" />
+                        <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.NewEmail)</div>
+                    </div>
+
+                    <hr class="my-4" />
+                    <h6 class="fw-semibold mb-1">Change Password</h6>
+                    <p class="text-muted small mb-3">Leave all three fields blank to keep your current password.</p>
+
+                    @* ── Current password ── *@
+                    <div class="mb-3">
+                        <label asp-for="CurrentPassword" class="form-label fw-semibold">
+                            Current Password <span class="text-muted fw-normal">(required to change password)</span>
+                        </label>
+                        <input asp-for="CurrentPassword" type="password"
+                               class="form-control @(ViewData.ModelState["CurrentPassword"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="Enter your current password" />
+                        <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.CurrentPassword)</div>
+                    </div>
+
+                    @* ── New password ── *@
+                    <div class="mb-3">
+                        <label asp-for="NewPassword" class="form-label fw-semibold">New Password</label>
+                        <input asp-for="NewPassword" type="password"
+                               class="form-control @(ViewData.ModelState["NewPassword"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="Minimum 6 characters" />
+                        <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.NewPassword)</div>
+                    </div>
+
+                    @* ── Confirm password ── *@
+                    <div class="mb-4">
+                        <label asp-for="ConfirmPassword" class="form-label fw-semibold">Confirm New Password</label>
+                        <input asp-for="ConfirmPassword" type="password"
+                               class="form-control @(ViewData.ModelState["ConfirmPassword"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="Repeat new password" />
+                        <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.ConfirmPassword)</div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-floppy"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

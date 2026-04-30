@@ -1343,7 +1343,108 @@ public class HomeController : Controller
         });
     }
 
-    public IActionResult Profile()              { ViewData["Title"] = "Profile"; return View(); }
+    public async Task<IActionResult> Profile(CancellationToken cancellationToken = default)
+    {
+        ViewData["Title"] = "Profile";
+
+        var userId = HttpContext.Session.GetInt32(SessionUserId) ?? 0;
+        var user = await _db.Users
+            .Include(u => u.Department)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+        if (user is null) return RedirectToAction(nameof(Login));
+
+        var parts    = user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = parts.Length >= 2 ? $"{parts[0][0]}{parts[^1][0]}" : user.FullName[..Math.Min(2, user.FullName.Length)];
+
+        return View(new ProfileViewModel
+        {
+            FullName       = user.FullName,
+            Email          = user.Email,
+            Role           = user.Role,
+            Initials       = initials.ToUpperInvariant(),
+            DepartmentName = user.Department?.Name,
+            LastLoginAt    = user.LastLoginAt.HasValue ? user.LastLoginAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt") : "Never",
+            NewFullName    = user.FullName,
+            NewEmail       = user.Email
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Profile(ProfileViewModel model, CancellationToken cancellationToken)
+    {
+        ViewData["Title"] = "Profile";
+
+        var userId = HttpContext.Session.GetInt32(SessionUserId) ?? 0;
+        var user = await _db.Users
+            .Include(u => u.Department)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+        if (user is null) return RedirectToAction(nameof(Login));
+
+        // Re-populate display fields for re-render
+        var parts    = user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = parts.Length >= 2 ? $"{parts[0][0]}{parts[^1][0]}" : user.FullName[..Math.Min(2, user.FullName.Length)];
+        model.FullName       = user.FullName;
+        model.Email          = user.Email;
+        model.Role           = user.Role;
+        model.Initials       = initials.ToUpperInvariant();
+        model.DepartmentName = user.Department?.Name;
+        model.LastLoginAt    = user.LastLoginAt.HasValue ? user.LastLoginAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt") : "Never";
+
+        // Password change validation
+        var changingPassword = !string.IsNullOrWhiteSpace(model.CurrentPassword);
+        if (changingPassword)
+        {
+            if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.PasswordHash))
+            {
+                ModelState.AddModelError(nameof(model.CurrentPassword), "Current password is incorrect.");
+            }
+            if (string.IsNullOrWhiteSpace(model.NewPassword))
+            {
+                ModelState.AddModelError(nameof(model.NewPassword), "New password is required when changing password.");
+            }
+        }
+
+        // Email uniqueness check
+        if (model.NewEmail != user.Email)
+        {
+            var emailTaken = await _db.Users.AnyAsync(u => u.Email == model.NewEmail.Trim() && u.Id != userId, cancellationToken);
+            if (emailTaken)
+                ModelState.AddModelError(nameof(model.NewEmail), "This email address is already in use.");
+        }
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        // Apply changes
+        user.FullName = model.NewFullName.Trim();
+        user.Email    = model.NewEmail.Trim();
+
+        if (changingPassword && !string.IsNullOrWhiteSpace(model.NewPassword))
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword, workFactor: 11);
+
+        // Update session if name/initials changed
+        var newParts    = user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var newInitials = newParts.Length >= 2 ? $"{newParts[0][0]}{newParts[^1][0]}" : user.FullName[..Math.Min(2, user.FullName.Length)];
+        HttpContext.Session.SetString(SessionUserName,     user.FullName);
+        HttpContext.Session.SetString(SessionUserInitials, newInitials.ToUpperInvariant());
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId     = userId,
+            Action     = "Updated Profile",
+            EntityType = "AppUser",
+            EntityId   = userId,
+            Details    = changingPassword ? "Profile and password updated." : "Profile updated.",
+            OccurredAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync(cancellationToken);
+        TempData["SuccessMessage"] = "Profile updated successfully.";
+        return RedirectToAction(nameof(Profile));
+    }
 
     public IActionResult AccessDenied()
     {

@@ -23,7 +23,7 @@ dotnet publish PeakMetrics.Web.csproj -c Release ^
   /p:MSDeployServiceURL=%WD_SERVER%:%WD_PORT% ^
   /p:DeployIisAppPath=%WD_SITE% ^
   /p:UserName=%WD_USER% ^
-  /p:Password=%WD_PASS% ^
+  "/p:Password=%WD_PASS%" ^
   /p:AllowUntrustedCertificate=True ^
   /p:SkipExtraFilesOnServer=True ^
   --nologo

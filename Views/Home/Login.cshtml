@@ -209,6 +209,17 @@
             box-shadow: 0 12px 24px rgba(37, 99, 235, 0.38);
         }
 
+        /* Shake animation for error */
+        @@keyframes pm-shake {
+            0%, 100% { transform: translateX(0); }
+            20%       { transform: translateX(-6px); }
+            40%       { transform: translateX(6px); }
+            60%       { transform: translateX(-4px); }
+            80%       { transform: translateX(4px); }
+        }
+
+        .pm-shake { animation: pm-shake 0.4s ease; }
+
         .pm-hint {
             margin-top: 16px;
             padding: 12px 14px;
@@ -262,30 +273,88 @@
 
                 @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ContainsKey(string.Empty))
                 {
-                    <div class="pm-alert">
-                        <i>⚠</i> @Html.ValidationMessage(string.Empty)
+                    <div class="pm-alert pm-shake" id="loginError">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        @Html.ValidationMessage(string.Empty)
                     </div>
                 }
 
-                <form asp-controller="Home" asp-action="Login" method="post">
+                <form asp-controller="Home" asp-action="Login" method="post" id="loginForm" novalidate>
                     @Html.AntiForgeryToken()
 
                     <div class="pm-field">
                         <label asp-for="Email">Email Address</label>
                         <input asp-for="Email" type="email" placeholder="you@peakmetrics.com"
+                               id="loginEmail"
                                class="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "is-invalid" : "")" />
-                        <div class="pm-error">@Html.ValidationMessageFor(m => m.Email)</div>
+                        <div class="pm-error" id="emailError">@Html.ValidationMessageFor(m => m.Email)</div>
                     </div>
 
                     <div class="pm-field">
                         <label asp-for="Password">Password</label>
                         <input asp-for="Password" type="password" placeholder="Enter your password"
+                               id="loginPassword"
                                class="@(ViewData.ModelState["Password"]?.Errors.Count > 0 ? "is-invalid" : "")" />
-                        <div class="pm-error">@Html.ValidationMessageFor(m => m.Password)</div>
+                        <div class="pm-error" id="passwordError">@Html.ValidationMessageFor(m => m.Password)</div>
                     </div>
 
-                    <button type="submit" class="pm-btn pm-btn-primary">Sign In</button>
+                    <button type="submit" class="pm-btn pm-btn-primary" id="loginBtn">Sign In</button>
                 </form>
+
+                <script>
+                (function () {
+                    var form     = document.getElementById('loginForm');
+                    var email    = document.getElementById('loginEmail');
+                    var password = document.getElementById('loginPassword');
+                    var emailErr = document.getElementById('emailError');
+                    var passErr  = document.getElementById('passwordError');
+                    var btn      = document.getElementById('loginBtn');
+
+                    function validateEmail(val) {
+                        if (!val) return 'Email is required.';
+                        var re = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+                        if (!re.test(val)) return 'Enter a valid email address.';
+                        return '';
+                    }
+
+                    function validatePassword(val) {
+                        if (!val) return 'Password is required.';
+                        return '';
+                    }
+
+                    function setError(input, errEl, msg) {
+                        errEl.textContent = msg;
+                        if (msg) {
+                            input.classList.add('is-invalid');
+                        } else {
+                            input.classList.remove('is-invalid');
+                        }
+                    }
+
+                    email.addEventListener('input', function () {
+                        setError(email, emailErr, validateEmail(email.value.trim()));
+                    });
+
+                    password.addEventListener('input', function () {
+                        setError(password, passErr, validatePassword(password.value));
+                    });
+
+                    form.addEventListener('submit', function (e) {
+                        var eErr = validateEmail(email.value.trim());
+                        var pErr = validatePassword(password.value);
+                        setError(email, emailErr, eErr);
+                        setError(password, passErr, pErr);
+                        if (eErr || pErr) {
+                            e.preventDefault();
+                            form.classList.add('pm-shake');
+                            setTimeout(function () { form.classList.remove('pm-shake'); }, 500);
+                        } else {
+                            btn.disabled = true;
+                            btn.textContent = 'Signing in...';
+                        }
+                    });
+                })();
+                </script>
             </div>
         </section>
     </div>

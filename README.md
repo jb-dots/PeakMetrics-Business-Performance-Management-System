@@ -38,3 +38,9 @@ The project is prepared for backend implementation in C# with these folders:
 - `Services` for business logic.
 - `Repositories` for data-access abstractions/implementations.
   
+  Name	                    Email	                  Password	Role
+Admin (Super Admin)	  admin@peakmetrics.com         Admin@123
+Administrator	        hradmin@peakmetrics.com       Admin@123
+Manager	              manager@peakmetrics.com       Manager@123
+Executive	            executive@peakmetrics.com     Executive@123
+User (Staff)	        sarah@peakmetrics.com         User@123

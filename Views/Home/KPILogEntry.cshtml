@@ -5,12 +5,13 @@
     var preSelected = kpis.FirstOrDefault(k => k.Id == Model.KpiId);
     var hasPreSelected = preSelected != null;
 
-    // Period options
+    // Period options — fixed 6 iterations, boundary is a constant (SonarQube S6680)
     var periods = new List<string>();
     var now = DateTime.Today;
     var year = now.Year;
     var quarter = (now.Month - 1) / 3 + 1;
-    for (int i = 0; i < 6; i++)
+    const int periodCount = 6;
+    for (int i = 0; i < periodCount; i++)
     {
         periods.Add($"Q{quarter} {year}");
         quarter--;
@@ -69,26 +70,37 @@
                     {
                         @* ── KPI selector (only shown when no pre-selection) ── *@
                         <div class="mb-4">
-                            <label class="form-label fw-semibold">Select KPI</label>
-                            <div class="row g-2" id="kpiCardGrid">
-                                @foreach (var kpi in kpis)
-                                {
-                                    var isSelected = Model.KpiId == kpi.Id;
-                                    <div class="col-12 col-md-6">
-                                        <label class="kpi-select-card @(isSelected ? "kpi-select-card-active" : "")"
-                                               data-kpi-id="@kpi.Id"
-                                               data-target="@kpi.Target"
-                                               data-unit="@kpi.Unit"
-                                               data-department="@kpi.Department"
-                                               data-perspective="@kpi.Perspective">
-                                            <div class="kpi-select-card-name">@kpi.Name</div>
-                                            <div class="kpi-select-card-meta">@kpi.Department · @kpi.Perspective</div>
-                                            <div class="kpi-select-card-target">Target: @kpi.Target @kpi.Unit</div>
-                                        </label>
-                                    </div>
-                                }
-                            </div>
-                            <span class="text-danger small" id="kpiSelectError"></span>
+                            <fieldset>
+                                <legend class="form-label fw-semibold mb-2">Select KPI</legend>
+                                <div class="row g-2" id="kpiCardGrid">
+                                    @foreach (var kpi in kpis)
+                                    {
+                                        var isSelected = Model.KpiId == kpi.Id;
+                                        var cardInputId = $"kpiCard_{kpi.Id}";
+                                        <div class="col-12 col-md-6">
+                                            <label class="kpi-select-card @(isSelected ? "kpi-select-card-active" : "")"
+                                                   for="@cardInputId"
+                                                   data-kpi-id="@kpi.Id"
+                                                   data-target="@kpi.Target"
+                                                   data-unit="@kpi.Unit"
+                                                   data-department="@kpi.Department"
+                                                   data-perspective="@kpi.Perspective">
+                                                <input type="radio"
+                                                       id="@cardInputId"
+                                                       name="KpiCardSelection"
+                                                       value="@kpi.Id"
+                                                       class="visually-hidden"
+                                                       @(isSelected ? "checked" : "")
+                                                       aria-label="@kpi.Name — @kpi.Department, @kpi.Perspective, target @kpi.Target @kpi.Unit" />
+                                                <div class="kpi-select-card-name">@kpi.Name</div>
+                                                <div class="kpi-select-card-meta">@kpi.Department · @kpi.Perspective</div>
+                                                <div class="kpi-select-card-target">Target: @kpi.Target @kpi.Unit</div>
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                                <span class="text-danger small" id="kpiSelectError"></span>
+                            </fieldset>
                         </div>
 
                         @* KPI detail panel — shown after card selection *@
@@ -257,8 +269,14 @@
     var kpiCards = document.querySelectorAll('.kpi-select-card');
     kpiCards.forEach(function (card) {
         card.addEventListener('click', function () {
-            kpiCards.forEach(function (c) { c.classList.remove('kpi-select-card-active'); });
+            kpiCards.forEach(function (c) {
+                c.classList.remove('kpi-select-card-active');
+                var r = c.querySelector('input[type="radio"]');
+                if (r) r.checked = false;
+            });
             card.classList.add('kpi-select-card-active');
+            var radio = card.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
 
             var id    = card.dataset.kpiId;
             var tgt   = parseFloat(card.dataset.target);

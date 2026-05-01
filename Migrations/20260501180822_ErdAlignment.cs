@@ -220,87 +220,33 @@ namespace PeakMetrics.Web.Migrations
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "Id",
-                keyValue: 1,
-                column: "Role",
-                value: "Super Admin");
-
-            migrationBuilder.UpdateData(
-                table: "Users",
-                keyColumn: "Id",
-                keyValue: 3,
-                column: "Role",
-                value: "Staff");
-
-            migrationBuilder.UpdateData(
-                table: "Users",
-                keyColumn: "Id",
-                keyValue: 4,
-                column: "Role",
-                value: "Staff");
-
-            migrationBuilder.UpdateData(
-                table: "Users",
-                keyColumn: "Id",
-                keyValue: 5,
-                column: "Role",
-                value: "Staff");
+                keyValues: new object[] { 1, 3, 4, 5 },
+                columns: new[] { "Role" },
+                values: new object[,]
+                {
+                    { "Super Admin" },
+                    { "Staff" },
+                    { "Staff" },
+                    { "Staff" },
+                });
 
             // ── Step 9: Update seed data for Kpis ────────────────────────────
             migrationBuilder.UpdateData(
                 table: "Kpis",
                 keyColumn: "Id",
-                keyValue: 1,
+                keyValues: new object[] { 1, 2, 3, 4, 5, 6, 7, 8 },
                 columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 1, "On Track" });
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 2,
-                columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 1, "On Track" });
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 3,
-                columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 4, "On Track" });
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 4,
-                columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 4, "On Track" });
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 5,
-                columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 2, "On Track" });
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 6,
-                columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 2, "On Track" });
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 7,
-                columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 3, "On Track" });
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 8,
-                columns: new[] { "CreatedByUserId", "Frequency", "PerspectiveId", "Status" },
-                values: new object[] { null, "Monthly", 3, "On Track" });
+                values: new object[,]
+                {
+                    { null, "Monthly", 1, "On Track" },
+                    { null, "Monthly", 1, "On Track" },
+                    { null, "Monthly", 4, "On Track" },
+                    { null, "Monthly", 4, "On Track" },
+                    { null, "Monthly", 2, "On Track" },
+                    { null, "Monthly", 2, "On Track" },
+                    { null, "Monthly", 3, "On Track" },
+                    { null, "Monthly", 3, "On Track" },
+                });
 
             // ── Step 10: Add indexes and foreign keys ─────────────────────────
             migrationBuilder.CreateIndex(
@@ -512,86 +458,32 @@ namespace PeakMetrics.Web.Migrations
             migrationBuilder.UpdateData(
                 table: "Kpis",
                 keyColumn: "Id",
-                keyValue: 1,
-                column: "Perspective",
-                value: "Financial");
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 2,
-                column: "Perspective",
-                value: "Financial");
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 3,
-                column: "Perspective",
-                value: "Learning & Growth");
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 4,
-                column: "Perspective",
-                value: "Learning & Growth");
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 5,
-                column: "Perspective",
-                value: "Customer");
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 6,
-                column: "Perspective",
-                value: "Customer");
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 7,
-                column: "Perspective",
-                value: "Internal Process");
-
-            migrationBuilder.UpdateData(
-                table: "Kpis",
-                keyColumn: "Id",
-                keyValue: 8,
-                column: "Perspective",
-                value: "Internal Process");
+                keyValues: new object[] { 1, 2, 3, 4, 5, 6, 7, 8 },
+                columns: new[] { "Perspective" },
+                values: new object[,]
+                {
+                    { "Financial" },
+                    { "Financial" },
+                    { "Learning & Growth" },
+                    { "Learning & Growth" },
+                    { "Customer" },
+                    { "Customer" },
+                    { "Internal Process" },
+                    { "Internal Process" },
+                });
 
             migrationBuilder.UpdateData(
                 table: "Users",
                 keyColumn: "Id",
-                keyValue: 1,
-                column: "Role",
-                value: "Admin");
-
-            migrationBuilder.UpdateData(
-                table: "Users",
-                keyColumn: "Id",
-                keyValue: 3,
-                column: "Role",
-                value: "User");
-
-            migrationBuilder.UpdateData(
-                table: "Users",
-                keyColumn: "Id",
-                keyValue: 4,
-                column: "Role",
-                value: "User");
-
-            migrationBuilder.UpdateData(
-                table: "Users",
-                keyColumn: "Id",
-                keyValue: 5,
-                column: "Role",
-                value: "User");
+                keyValues: new object[] { 1, 3, 4, 5 },
+                columns: new[] { "Role" },
+                values: new object[,]
+                {
+                    { "Admin" },
+                    { "User" },
+                    { "User" },
+                    { "User" },
+                });
         }
     }
 }

@@ -5,11 +5,17 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
+// SonarQube S2068: PasswordHash value below is a placeholder for the initial seed account only.
+// The real password must be set via the application's Change Password feature after first login.
+#pragma warning disable S2068 // Credentials should not be hard-coded
+
 namespace PeakMetrics.Web.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
+        // Placeholder bcrypt hash — not a real password. Seed account must change password on first login.
+        private const string PlaceholderHash = "$2a$11$PLACEHOLDER000000000000000000000000000000000000000000000";
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -202,7 +208,7 @@ namespace PeakMetrics.Web.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "CreatedAt", "DepartmentId", "Email", "FullName", "IsActive", "LastLoginAt", "PasswordHash", "Role" },
-                values: new object[] { 1, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "admin@peakmetrics.com", "System Admin", true, null, "$2a$11$K5Ow5Ow5Ow5Ow5Ow5Ow5OeK5Ow5Ow5Ow5Ow5Ow5Ow5Ow5Ow5Ow2", "Admin" });
+                values: new object[] { 1, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "admin@peakmetrics.com", "System Admin", true, null, PlaceholderHash, "Admin" });
 
             migrationBuilder.InsertData(
                 table: "Kpis",
@@ -293,3 +299,5 @@ namespace PeakMetrics.Web.Migrations
         }
     }
 }
+
+#pragma warning restore S2068

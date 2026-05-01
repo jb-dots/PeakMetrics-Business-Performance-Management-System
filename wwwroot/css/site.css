@@ -1259,10 +1259,19 @@ body.sidebar-collapsed .sidebar-user-meta { display: none; }
 body.sidebar-collapsed .app-sidebar-footer { justify-content: center; flex-direction: column; gap: 0.4rem; }
 
 /* ── Logo fallback text ───────────────────────────────────────────────────── */
+/* The fallback text is always in the DOM but hidden behind the image.
+   When the image fails to load it collapses (broken img has no intrinsic size
+   when display is set to block and src is invalid), revealing the text. */
 .app-logo-fallback-text {
     font-size: 1.1rem;
     font-weight: 700;
     color: #e2e8f0;
+    display: none;
+}
+
+.app-brand:not(:has(img[src])) .app-logo-fallback-text,
+.app-brand img.app-logo-image[src=""] ~ .app-logo-fallback-text {
+    display: inline;
 }
 
 /* ── Logout confirmation modal ───────────────────────────────────────────── */

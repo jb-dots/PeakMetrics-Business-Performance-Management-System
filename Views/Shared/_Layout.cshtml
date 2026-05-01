@@ -45,7 +45,7 @@
     <link rel="icon" type="image/png" href="~/images/peakmetrics-logo.png" />
     <link rel="shortcut icon" href="~/images/peakmetrics-logo.png" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body data-page="@currentAction">
@@ -60,12 +60,11 @@
             <aside class="app-sidebar d-none d-md-flex" aria-label="Primary navigation">
                 <div class="app-logo-wrap">
                     <div class="app-brand">
-                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image"
-                             onerror="this.style.display='none'; this.nextElementSibling.classList.remove('d-none');" />
-                        <span class="app-logo-fallback-text d-none">PeakMetrics</span>
+                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image" />
+                        <span class="app-logo-fallback-text" aria-hidden="true">PeakMetrics</span>
                     </div>
                 </div>
-                <nav class="app-nav">
+                <nav class="app-nav" aria-label="Main menu">
                     @foreach (var item in visibleMenuItems)
                     {
                         var isActive = string.Equals(item.Action, currentAction, StringComparison.OrdinalIgnoreCase);
@@ -115,13 +114,12 @@
                 <div class="offcanvas-header app-logo-wrap">
                     <div class="app-brand app-brand-mobile">
                         <span class="visually-hidden" id="mobileSidebarLabel">PeakMetrics navigation</span>
-                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image"
-                             onerror="this.style.display='none';" />
+                        <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics logo" class="app-logo-image" />
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                 </div>
                 <div class="offcanvas-body p-0 d-flex flex-column">
-                    <nav class="app-nav flex-grow-1">
+                    <nav class="app-nav flex-grow-1" aria-label="Main menu">
                         @foreach (var item in visibleMenuItems)
                         {
                             var isActive = string.Equals(item.Action, currentAction, StringComparison.OrdinalIgnoreCase);
@@ -293,10 +291,10 @@
     }
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.7.1.min.js"></script>
-    <script src="https://ajax.aspnetcdn.com/ajax/jquery.validate/1.21.0/jquery.validate.min.js"></script>
-    <script src="https://ajax.aspnetcdn.com/ajax/mvc/5.2.7/jquery.validate.unobtrusive.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.21.0/dist/jquery.validate.min.js" integrity="sha384-INLNT6YPpjCRFM2xpOexEE3T4i2mIigf+Kr19b7a59RFtrVBZQzZWXkGuiMA/q1r" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js" integrity="sha384-DU2a51mTHKDhpXhTyJQ++hP8L9L8Gc48TlvbzBmUof71V7kNVs4ELmaVJKPxcAGn" crossorigin="anonymous"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 

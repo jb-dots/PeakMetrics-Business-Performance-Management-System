@@ -138,20 +138,13 @@ else
                             <tbody>
                                 @foreach (var kpi in Model.Kpis)
                                 {
-                                    var statusCss = kpi.Status switch
-                                    {
-                                        "On Track" => "status-badge status-ontrack",
-                                        "At Risk"  => "status-badge status-atrisk",
-                                        "Behind"   => "status-badge status-behind",
-                                        _          => "status-badge bg-light text-secondary border"
-                                    };
                                     <tr>
                                         <td class="fw-semibold">@kpi.Name</td>
                                         <td class="text-muted">@kpi.Department</td>
                                         <td>@kpi.Target</td>
                                         <td class="fw-semibold">@kpi.Actual</td>
                                         <td class="text-muted">@kpi.Variance</td>
-                                        <td><span class="@statusCss">@kpi.Status</span></td>
+                                        <td>@await Html.PartialAsync("_StatusBadge", kpi.Status)</td>
                                     </tr>
                                 }
                             </tbody>

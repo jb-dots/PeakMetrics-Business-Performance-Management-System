@@ -16,34 +16,15 @@
 }
 else
 {
-    var summaryCards = new[]
+    var cards = new List<(string Title, string Value, string Icon)>
     {
-        new { Title = "My KPIs",  Value = Model.MyKpis.ToString(),  Icon = "bi-bar-chart-line" },
-        new { Title = "On Track", Value = Model.OnTrack.ToString(),  Icon = "bi-graph-up-arrow" },
-        new { Title = "At Risk",  Value = Model.AtRisk.ToString(),   Icon = "bi-exclamation-circle" },
-        new { Title = "Behind",   Value = Model.Behind.ToString(),   Icon = "bi-graph-down-arrow" }
+        ("My KPIs",  Model.MyKpis.ToString(),  "bi-bar-chart-line"),
+        ("On Track", Model.OnTrack.ToString(),  "bi-graph-up-arrow"),
+        ("At Risk",  Model.AtRisk.ToString(),   "bi-exclamation-circle"),
+        ("Behind",   Model.Behind.ToString(),   "bi-graph-down-arrow"),
     };
 
-    <!-- Summary Cards -->
-    <div class="row g-4 mb-4">
-        @foreach (var card in summaryCards)
-        {
-            <div class="col-12 col-sm-6 col-xl-3">
-                <div class="card card-clean h-100">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1 small">@card.Title</p>
-                            <h2 class="mb-0 fw-bold">@card.Value</h2>
-                        </div>
-                        <div class="d-flex align-items-center justify-content-center rounded-3"
-                             style="width:56px;height:56px;background:#EFF6FF;">
-                            <i class="bi @card.Icon" style="font-size:1.5rem;color:#1B4FD8;"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
+    @await Html.PartialAsync("_SummaryCards", null, new ViewDataDictionary(ViewData) { ["Cards"] = cards })
 
     <div class="row g-4 mb-4">
         <!-- My KPI List -->
@@ -74,19 +55,12 @@ else
                                 <tbody>
                                     @foreach (var kpi in Model.MyKpiList)
                                     {
-                                        var statusCss = kpi.Status switch
-                                        {
-                                            "On Track" => "status-ontrack",
-                                            "At Risk"  => "status-atrisk",
-                                            "Behind"   => "status-behind",
-                                            _          => "status-ontrack"
-                                        };
                                         <tr>
                                             <td class="fw-semibold">@kpi.Name</td>
                                             <td class="text-muted small">@kpi.Perspective</td>
                                             <td>@kpi.Target</td>
                                             <td>@kpi.Actual</td>
-                                            <td><span class="status-badge @statusCss">@kpi.Status</span></td>
+                                            <td>@await Html.PartialAsync("_StatusBadge", kpi.Status)</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -124,21 +98,7 @@ else
                 </div>
             </div>
 
-            <div class="card card-clean">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center justify-content-center rounded-3"
-                         style="width:44px;height:44px;background:#EFF6FF;">
-                        <i class="bi bi-bell" style="font-size:1.2rem;color:#1B4FD8;"></i>
-                    </div>
-                    <div>
-                        <p class="text-muted mb-0 small">Unread Notifications</p>
-                        <h4 class="mb-0 fw-bold">@Model.UnreadNotifications</h4>
-                    </div>
-                    <div class="ms-auto">
-                        <a asp-controller="Home" asp-action="Notifications" class="btn btn-sm btn-outline-primary">View</a>
-                    </div>
-                </div>
-            </div>
+            @await Html.PartialAsync("_NotificationsCard", Model.UnreadNotifications)
         </div>
     </div>
 
@@ -170,17 +130,10 @@ else
                                 <tbody>
                                     @foreach (var log in Model.MyRecentLogs)
                                     {
-                                        var statusCss = log.Status switch
-                                        {
-                                            "On Track" => "status-ontrack",
-                                            "At Risk"  => "status-atrisk",
-                                            "Behind"   => "status-behind",
-                                            _          => "status-ontrack"
-                                        };
                                         <tr>
                                             <td class="fw-semibold">@log.KpiName</td>
                                             <td>@log.ActualWithUnit</td>
-                                            <td><span class="status-badge @statusCss">@log.Status</span></td>
+                                            <td>@await Html.PartialAsync("_StatusBadge", log.Status)</td>
                                             <td class="text-muted">@log.RelativeTime</td>
                                         </tr>
                                     }

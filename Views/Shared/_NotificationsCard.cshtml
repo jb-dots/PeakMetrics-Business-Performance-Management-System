@@ -1,0 +1,19 @@
+@* Renders the unread-notifications summary card.
+   Model: int (unread count) *@
+@model int
+
+<div class="card card-clean">
+    <div class="card-body d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center justify-content-center rounded-3"
+             style="width:44px;height:44px;background:#EFF6FF;">
+            <i class="bi bi-bell" style="font-size:1.2rem;color:#1B4FD8;"></i>
+        </div>
+        <div>
+            <p class="text-muted mb-0 small">Unread Notifications</p>
+            <h4 class="mb-0 fw-bold">@Model</h4>
+        </div>
+        <div class="ms-auto">
+            <a asp-controller="Home" asp-action="Notifications" class="btn btn-sm btn-outline-primary">View</a>
+        </div>
+    </div>
+</div>

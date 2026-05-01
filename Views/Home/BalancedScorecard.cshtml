@@ -48,17 +48,10 @@ else
                         {
                             @foreach (var kpi in group.Kpis)
                             {
-                                var statusCss = kpi.Status switch
-                                {
-                                    "On Track" => "status-badge status-ontrack",
-                                    "At Risk"  => "status-badge status-atrisk",
-                                    "Behind"   => "status-badge status-behind",
-                                    _          => "status-badge bg-light text-secondary border"
-                                };
                                 <div class="border rounded-3 p-3" style="background:#f9fafb;">
                                     <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
                                         <h6 class="mb-0 fw-semibold" style="font-size:0.88rem;">@kpi.Name</h6>
-                                        <span class="@statusCss flex-shrink-0">@kpi.Status</span>
+                                        @await Html.PartialAsync("_StatusBadge", kpi.Status)
                                     </div>
                                     <div class="d-flex gap-4" style="font-size:0.82rem;">
                                         <div><span class="text-muted">Target: </span><span class="fw-semibold">@kpi.Target</span></div>

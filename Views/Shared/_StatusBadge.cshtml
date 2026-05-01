@@ -1,0 +1,14 @@
+@* Renders a status badge span with the correct CSS class for the given status string.
+   Model: string (status value) *@
+@model string
+
+@{
+    var css = Model switch
+    {
+        "On Track" => "status-badge status-ontrack",
+        "At Risk"  => "status-badge status-atrisk",
+        "Behind"   => "status-badge status-behind",
+        _          => "status-badge bg-light text-secondary border"
+    };
+}
+<span class="@css">@Model</span>

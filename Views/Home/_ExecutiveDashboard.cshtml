@@ -109,9 +109,10 @@
                                     <span class="small text-muted">@dept.ScorePct%</span>
                                 </div>
                                 <div class="progress" style="height:6px;">
-                                    <div class="progress-bar" role="progressbar"
-                                         style="width:@barWidth%;background:#22c55e;"
-                                         aria-valuenow="@dept.ScorePct" aria-valuemin="0" aria-valuemax="100"></div>
+                                    <progress class="progress-bar w-100"
+                                              value="@dept.ScorePct" max="100"
+                                              aria-label="@dept.DepartmentName performance score"
+                                              style="height:6px;accent-color:#22c55e;"></progress>
                                 </div>
                             </li>
                         }

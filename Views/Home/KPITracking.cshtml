@@ -2,7 +2,7 @@
 @{
     var kpis = Model?.Kpis ?? Array.Empty<KpiTrackingItemViewModel>();
     var role = ViewData["SessionUserRole"]?.ToString() ?? string.Empty;
-    var canManage = role is "Admin" or "Administrator" or "Manager";
+    var canManage = role is "Super Admin" or "Administrator" or "Manager";
     var showArchived = (bool)(ViewBag.ShowArchived ?? false);
 }
 
@@ -10,7 +10,7 @@
 {
     <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
         <i class="bi bi-check-circle-fill"></i>
-        <span>@Html.Raw(successMsg)</span>
+        <span>@successMsg</span>
     </div>
 }
 
@@ -195,7 +195,7 @@
                         <option value="10" selected>10</option>
                         <option value="20">20</option>
                     </select>
-                    <div class="btn-group btn-group-sm table-density-toggle" id="kpiDensityToggle" role="group">
+                    <div class="btn-group btn-group-sm table-density-toggle" id="kpiDensityToggle">
                         <button type="button" class="btn btn-outline-secondary active" data-density="comfortable">Comfortable</button>
                         <button type="button" class="btn btn-outline-secondary" data-density="compact">Compact</button>
                     </div>

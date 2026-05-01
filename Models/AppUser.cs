@@ -11,7 +11,7 @@ public sealed class AppUser
     /// <summary>BCrypt hash of the password.</summary>
     public string PasswordHash { get; set; } = string.Empty;
 
-    public string Role { get; set; } = "User"; // Admin | Manager | User
+    public string Role { get; set; } = "Staff"; // Super Admin | Administrator | Manager | Staff | Executive
 
     public int? DepartmentId { get; set; }
 

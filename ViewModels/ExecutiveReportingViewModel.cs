@@ -38,7 +38,7 @@ public sealed class ExecScorecardRowViewModel
 
 public sealed class ExecGoalRowViewModel
 {
-    public string  Title  { get; init; } = string.Empty;
-    public string  Status { get; init; } = string.Empty;
-    public string? DueDate { get; init; }
+    public string  Title      { get; init; } = string.Empty;
+    public string  Status     { get; init; } = string.Empty;
+    public int?    TargetYear { get; init; }
 }

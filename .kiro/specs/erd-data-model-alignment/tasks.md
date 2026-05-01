@@ -1,0 +1,271 @@
+# Implementation Plan: ERD Data Model Alignment
+
+## Overview
+
+Align the PeakMetrics codebase to the ERD and data dictionary from the IT15 1st Deliverables document. All changes are purely structural — no new user-facing features. The work proceeds layer by layer: models first, then `AppDbContext` configuration and seed data, then the EF Core migration, then the controller, then ViewModels, then Razor views. A test project is set up once and all property-based and unit tests are added alongside the code they verify.
+
+---
+
+## Tasks
+
+- [ ] 1. Set up the xUnit + FsCheck test project
+  - Create a new xUnit test project (e.g., `PeakMetrics.Tests`) targeting net8.0 in the solution.
+  - Add NuGet references: `xunit`, `xunit.runner.visualstudio`, `FsCheck.Xunit`, `Microsoft.EntityFrameworkCore.InMemory`.
+  - Add a project reference from `PeakMetrics.Tests` to `PeakMetrics.Web`.
+  - Create a shared `DbContextFactory` helper that builds an in-memory `AppDbContext` for tests.
+  - _Requirements: 10.1 (prerequisite for all property and unit tests)_
+
+- [ ] 2. Introduce the `Perspective` model and `GoalKpi` join entity
+  - [ ] 2.1 Create `Models/Perspective.cs`
+    - Define `Id` (int PK), `Name` (string), and reverse navigation collections `ICollection<Kpi> Kpis` and `ICollection<StrategicGoal> Goals`.
+    - _Requirements: 1.3_
+  - [ ] 2.2 Create `Models/GoalKpi.cs`
+    - Define `GoalId` (int), `KpiId` (int), and navigation properties `StrategicGoal Goal` and `Kpi Kpi`.
+    - _Requirements: 4.1, 4.2_
+
+- [ ] 3. Update existing model classes
+  - [ ] 3.1 Update `Models/Kpi.cs`
+    - Remove `string Perspective` property.
+    - Add `int PerspectiveId`, `Perspective Perspective` navigation, `string Frequency` (default `"Monthly"`), `string Status` (default `"On Track"`), `int? CreatedByUserId`, `AppUser? CreatedBy` navigation.
+    - Add `ICollection<StrategicGoal> LinkedGoals` navigation collection.
+    - _Requirements: 2.3, 5.5_
+  - [ ] 3.2 Update `Models/StrategicGoal.cs`
+    - Remove `string Perspective` and `DateTime? DueDate` properties.
+    - Add `int PerspectiveId`, `Perspective Perspective` navigation, `int? TargetYear`.
+    - Add `ICollection<Kpi> LinkedKpis` navigation collection.
+    - _Requirements: 3.3, 6.3_
+  - [ ] 3.3 Update `Models/Notification.cs`
+    - Remove `string Severity` and `string Icon` properties.
+    - Add `string Type` (default `"Info"`), `int? KpiId`, `Kpi? Kpi` navigation.
+    - _Requirements: 7.4, 8.3_
+  - [ ] 3.4 Update `Models/AppUser.cs`
+    - Change the default value of `Role` from `"User"` to `"Staff"`.
+    - _Requirements: 9.6_
+
+- [ ] 4. Update `AppDbContext` — fluent configuration and seed data
+  - [ ] 4.1 Add `DbSet` properties and `Perspective` entity configuration
+    - Add `public DbSet<Perspective> Perspectives => Set<Perspective>();` and `public DbSet<GoalKpi> GoalKpis => Set<GoalKpi>();`.
+    - Add fluent configuration for `Perspective`: primary key, `Name` max length 50, unique index on `Name`.
+    - Seed the four perspective rows with stable IDs 1–4 (`Financial`, `Customer`, `Internal Process`, `Learning & Growth`).
+    - _Requirements: 1.1, 1.2, 1.4, 11.1_
+  - [ ] 4.2 Update `Kpi` fluent configuration
+    - Remove the `e.Property(k => k.Perspective).HasMaxLength(100).IsRequired()` mapping.
+    - Add `PerspectiveId` FK with `OnDelete(DeleteBehavior.Restrict)` toward `Perspectives`.
+    - Add `Frequency` (max 20, required) and `Status` (max 20, required) property mappings.
+    - Add `CreatedByUserId` nullable FK with `OnDelete(DeleteBehavior.SetNull)` toward `Users`.
+    - Update the `Kpis` seed data to replace the `Perspective` string with the correct `PerspectiveId` integer (1–4) for each of the eight seeded KPIs.
+    - _Requirements: 2.1, 2.5, 5.1, 5.2, 5.3, 5.6, 11.2, 11.3, 11.4, 11.9_
+  - [ ] 4.3 Add `GoalKpi` join entity configuration
+    - Configure composite PK `(GoalId, KpiId)`.
+    - Configure `Goal` FK with `OnDelete(DeleteBehavior.Cascade)` and `Kpi` FK with `OnDelete(DeleteBehavior.Cascade)`.
+    - Wire the many-to-many navigation using `UsingEntity<GoalKpi>()` on both `StrategicGoal.LinkedKpis` and `Kpi.LinkedGoals`.
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 11.5_
+  - [ ] 4.4 Update `StrategicGoal` fluent configuration
+    - Remove the `e.Property(g => g.Perspective).HasMaxLength(100).IsRequired()` mapping.
+    - Add `PerspectiveId` FK with `OnDelete(DeleteBehavior.Restrict)` toward `Perspectives`.
+    - _Requirements: 3.1, 11.6_
+  - [ ] 4.5 Update `Notification` fluent configuration
+    - Remove `Severity` (max 50) and `Icon` (max 100) property mappings.
+    - Add `Type` (max 20, required) property mapping.
+    - Add `KpiId` nullable FK with `OnDelete(DeleteBehavior.SetNull)` toward `Kpis`.
+    - _Requirements: 7.3, 8.1, 11.7, 11.8_
+  - [ ] 4.6 Update `AppUser` seed data role values
+    - Change `Role = "Admin"` → `"Super Admin"` for user Id=1 (System Admin).
+    - Change `Role = "User"` → `"Staff"` for user Ids 3, 4, 5 (Sarah Johnson, Michael Chen, Emily Davis).
+    - _Requirements: 9.2, 9.3_
+  - [ ]* 4.7 Write unit tests for seed data correctness
+    - Verify the four `Perspective` rows have the correct IDs and names.
+    - Verify each of the eight seeded KPIs has the correct `PerspectiveId`.
+    - Verify seeded users have the updated role values (`Super Admin`, `Staff`).
+    - _Requirements: 1.2, 2.5, 9.2, 9.3_
+
+- [ ] 5. Generate the `ErdAlignment` EF Core migration
+  - [ ] 5.1 Scaffold the migration
+    - Run `dotnet ef migrations add ErdAlignment` to generate the migration scaffold.
+    - _Requirements: 10.1_
+  - [ ] 5.2 Implement `Up()` in the correct dependency order
+    - Step 1: Create `Perspectives` table and insert the four seed rows (guard with `IF NOT EXISTS` for idempotency).
+    - Step 2: Add `Kpis.PerspectiveId` as nullable; populate via raw SQL `UPDATE` with a `CASE` expression mapping the old string to the new integer; alter to NOT NULL; drop `Kpis.Perspective`.
+    - Step 3: Add `Kpis.Frequency` (NOT NULL, default `'Monthly'`), `Kpis.Status` (NOT NULL, default `'On Track'`), `Kpis.CreatedByUserId` (nullable FK).
+    - Step 4: Add `StrategicGoals.PerspectiveId` as nullable; populate from existing `Perspective` string; alter to NOT NULL; drop `StrategicGoals.Perspective`.
+    - Step 5: Add `StrategicGoals.TargetYear` (nullable int); populate from `YEAR(DueDate)` where `DueDate IS NOT NULL`; drop `StrategicGoals.DueDate`.
+    - Step 6: Create `GoalKpis` table with composite PK and FKs.
+    - Step 7: Add `Notifications.Type` (NOT NULL, default `'Info'`); populate from `Severity` using mapping `Critical → Alert`, `Warning → Warning`, `Standard → Info`; drop `Notifications.Severity` and `Notifications.Icon`; add `Notifications.KpiId` (nullable FK).
+    - Step 8: Update `Users.Role` seed data: `Admin → Super Admin`, `User → Staff`.
+    - _Requirements: 10.2, 10.3, 10.4, 10.5, 10.7_
+  - [ ] 5.3 Implement `Down()` to reverse all steps
+    - Restore `DueDate` as `DATEFROMPARTS(TargetYear, 1, 1, 0, 0, 0)` where `TargetYear IS NOT NULL`.
+    - Restore `Severity` and `Icon` from `Type` using the reverse mapping (`Alert → Critical`, `Warning → Warning`, `Info → Standard`; icon derived from severity).
+    - Reverse all other column additions and table creations in reverse order.
+    - _Requirements: 10.6_
+
+- [ ] 6. Checkpoint — verify the migration applies cleanly
+  - Ensure all tests pass, ask the user if questions arise.
+  - Run `dotnet build` to confirm the project compiles with the updated models and context.
+  - Run `dotnet ef database update` against a local dev database to confirm the migration applies without errors.
+
+- [ ] 7. Update `HomeController` — role constants and access checks
+  - [ ] 7.1 Update role constants and `Dashboard` routing
+    - Change `private const string RoleAdmin = "Admin"` to `"Super Admin"`.
+    - Add `private const string RoleStaff = "Staff"`.
+    - Update the `Dashboard` switch: replace `"User"` case with `RoleStaff` (`"Staff"`); replace `RoleAdmin` case to use `"Super Admin"`.
+    - _Requirements: 9.4, 9.5, 12.9_
+  - [ ] 7.2 Update all `HasAccess(...)` call sites
+    - Replace every `"Admin"` argument with `"Super Admin"` in all `HasAccess(...)` calls throughout the controller.
+    - Replace every `"User"` argument with `"Staff"` in all `HasAccess(...)` calls.
+    - _Requirements: 9.4, 12.10_
+  - [ ] 7.3 Update `CanManageKpis()`
+    - Replace `"Admin"` with `"Super Admin"` in the role check.
+    - _Requirements: 9.4_
+  - [ ] 7.4 Update `UserCreate` and `UserEdit` admin-role guard
+    - Replace the `model.Role == "Admin"` guard with `model.Role == "Super Admin"` in both actions.
+    - _Requirements: 9.4_
+  - [ ]* 7.5 Write property test for role-based access control
+    - **Property 9: Role-based access control uses updated role names**
+    - **Validates: Requirements 9.1, 9.4**
+
+- [ ] 8. Update `HomeController` — notification creation and KPI queries
+  - [ ] 8.1 Update `KPILogEntry` POST — notification creation
+    - Replace `Severity = computedStatus == StatusBehind ? "Critical" : "Warning"` and `Icon = ...` with `Type = computedStatus == StatusBehind ? "Alert" : "Warning"`.
+    - Add `KpiId = model.KpiId` to the new `Notification` object.
+    - _Requirements: 7.5, 7.6, 8.4, 12.8_
+  - [ ] 8.2 Update `PopulateQuickNotificationsAsync`
+    - Remove reads of `n.Icon` and `n.Severity`.
+    - Add the static helper `FromNotificationType(string type)` that returns `(string Icon, AlertSeverity Severity)` using a switch expression: `"Alert" → ("bi-x-circle", AlertSeverity.Critical)`, `"Warning" → ("bi-exclamation-triangle", AlertSeverity.Warning)`, `_ → ("bi-info-circle", AlertSeverity.Standard)`.
+    - Update the `Select` projection to call `FromNotificationType(n.Type)` for `Icon` and `Severity`.
+    - _Requirements: 7.8, 12.4_
+  - [ ] 8.3 Update `Notifications` action
+    - Replace `n.Icon` and `ToAlertSeverity(n.Severity)` with `FromNotificationType(n.Type)` in the `Select` projection.
+    - _Requirements: 7.8, 12.4_
+  - [ ] 8.4 Update KPI queries that filter or group by perspective string
+    - In `KPITracking`: add `.Include(k => k.Perspective)` to the KPI query; change `k.Perspective == selectedPerspective` filter to `k.Perspective.Name == selectedPerspective`; change `k.Perspective` in the `KpiTrackingItemViewModel` projection to `k.Perspective.Name`; change the `allPersps` query to `Select(k => k.Perspective.Name)`.
+    - In `KpiManagement`: change `Perspective = k.Perspective` to `Perspective = k.Perspective.Name` in the `KpiManagementItemViewModel` projection (add `.Include(k => k.Perspective)`).
+    - In `KpiDetail`: change `Perspective = k.Perspective` to `Perspective = k.Perspective.Name`.
+    - In `BalancedScorecard`: add `.Include(k => k.Perspective)` and change `k.Perspective == p` to `k.Perspective.Name == p`; change `OrderBy(k => k.Perspective)` to `OrderBy(k => k.Perspective.Name)`.
+    - In `BuildStaffDashboardAsync`: change `k.Perspective` to `k.Perspective.Name` in the `KpiRowViewModel` projection (add `.Include(k => k.Perspective)`).
+    - In `BuildExecutiveDashboardAsync`: add `.Include(k => k.Perspective)` to the `latestKpisWithPerspective` query; change `k.Perspective` to `k.Perspective.Name`.
+    - In `PerformanceAnalytics`: change `e.Kpi.Perspective` to `e.Kpi.Perspective.Name` in the trend grouping (add `.ThenInclude(k => k.Perspective)`); change `k.Perspective` to `k.Perspective.Name` in the BSC scorecard builder.
+    - In `ExecutiveReporting`: add `.Include(k => k.Perspective)` and change `k.Perspective` to `k.Perspective.Name` in the scorecard query.
+    - _Requirements: 2.6, 12.1, 12.5_
+  - [ ] 8.5 Update KPI create/edit actions to use `PerspectiveId`
+    - In `KpiCreate` POST: replace `Perspective = model.Perspective` with `PerspectiveId = model.PerspectiveId`.
+    - In `KpiEdit` GET: replace `Perspective = kpi.Perspective` with `PerspectiveId = kpi.PerspectiveId` when building the form.
+    - In `KpiEdit` POST: replace `kpi.Perspective = model.Perspective` with `kpi.PerspectiveId = model.PerspectiveId`.
+    - Update `BuildKpiFormAsync` to load `model.Perspectives` from `_db.Perspectives.OrderBy(p => p.Name).Select(p => new PerspectiveOptionViewModel { Id = p.Id, Name = p.Name })`.
+    - _Requirements: 12.6_
+  - [ ] 8.6 Update strategic goal create/edit actions to use `PerspectiveId` and `TargetYear`
+    - In `StrategicPlanning` GET: change `Perspective = g.Perspective` to `Perspective = g.Perspective.Name` (add `.Include(g => g.Perspective)`); change `DueDate = ...` to `TargetYear = g.TargetYear` in the `StrategicGoalCardViewModel` projection.
+    - In `StrategicGoalCreate` POST: replace `Perspective = model.Perspective` with `PerspectiveId = model.PerspectiveId`; replace `DueDate = model.DueDate...` with `TargetYear = model.TargetYear`.
+    - In `StrategicGoalEdit` GET: replace `Perspective = goal.Perspective` with `PerspectiveId = goal.PerspectiveId`; replace `DueDate = ...` with `TargetYear = goal.TargetYear`.
+    - In `StrategicGoalEdit` POST: replace `goal.Perspective = model.Perspective` with `goal.PerspectiveId = model.PerspectiveId`; replace `goal.DueDate = ...` with `goal.TargetYear = model.TargetYear`.
+    - Update `StrategicGoalCreate` and `StrategicGoalEdit` GET actions to load `Perspectives` list into the form ViewModel.
+    - In `ExecutiveReporting`: change `DueDate = g.DueDate.HasValue ? ...` to `TargetYear = g.TargetYear` in the `ExecGoalRowViewModel` projection.
+    - _Requirements: 3.4, 6.4, 6.5, 12.2, 12.3, 12.7_
+  - [ ]* 8.7 Write property test for Notification.Type mapping
+    - **Property 7: Notification.Type mapping is deterministic and complete**
+    - **Validates: Requirements 7.5, 7.6, 7.7, 7.8**
+  - [ ]* 8.8 Write unit tests for notification KpiId population
+    - Verify a KPI-triggered notification has `KpiId` set to the triggering KPI's ID.
+    - Verify a non-KPI notification has `KpiId = null`.
+    - _Requirements: 8.4, 8.5_
+  - [ ]* 8.9 Write unit tests for dashboard routing
+    - Verify each of the five role values routes to the correct dashboard builder (one test per role).
+    - _Requirements: 9.5_
+
+- [ ] 9. Update ViewModels
+  - [ ] 9.1 Update `NotificationItemViewModel`
+    - Remove `Icon` and `Severity` properties; add `string Type` property (default `"Info"`).
+    - _Requirements: 7.4_
+  - [ ] 9.2 Update `KpiFormViewModel`
+    - Replace `string Perspective` with `int PerspectiveId`.
+    - Add `IReadOnlyList<PerspectiveOptionViewModel> Perspectives` dropdown list property.
+    - Create `PerspectiveOptionViewModel` record with `Id` (int) and `Name` (string) in the same file or a shared ViewModels file.
+    - _Requirements: 12.6_
+  - [ ] 9.3 Update `StrategicGoalFormViewModel`
+    - Replace `string Perspective` with `int PerspectiveId`.
+    - Add `IReadOnlyList<PerspectiveOptionViewModel> Perspectives` dropdown list property.
+    - Replace `DateTime? DueDate` with `int? TargetYear`.
+    - Add `[Range(2000, 2100)]` data annotation on `TargetYear`.
+    - _Requirements: 6.5, 6.6, 12.7_
+  - [ ] 9.4 Update `StrategicGoalCardViewModel` and `StrategicGoalRowViewModel`
+    - Replace `string? DueDate` with `int? TargetYear` in both records.
+    - _Requirements: 6.4_
+  - [ ]* 9.5 Write property test for TargetYear validation
+    - **Property 6: TargetYear validation accepts valid range and rejects invalid values**
+    - **Validates: Requirements 6.6**
+
+- [ ] 10. Checkpoint — verify controller and ViewModel compilation
+  - Ensure all tests pass, ask the user if questions arise.
+  - Run `dotnet build` to confirm no compile errors in the controller and ViewModel layer.
+
+- [ ] 11. Update Razor views
+  - [ ] 11.1 Update `Views/Home/KpiForm.cshtml`
+    - Change the Perspective `<select>` to bind to `PerspectiveId` (int) using `asp-for="PerspectiveId"`.
+    - Replace the hardcoded `new[] { "Financial", ... }` options loop with a loop over `Model.Perspectives` using `<option value="@p.Id" selected="@(Model.PerspectiveId == p.Id ? "selected" : null)">@p.Name</option>`.
+    - _Requirements: 12.6_
+  - [ ] 11.2 Update `Views/Home/StrategicGoalForm.cshtml`
+    - Change the Perspective `<select>` to bind to `PerspectiveId` using `asp-for="PerspectiveId"` with options from `Model.Perspectives`.
+    - Replace the `<input type="date" asp-for="DueDate">` with `<input type="number" asp-for="TargetYear" min="2000" max="2100" placeholder="e.g., 2026">`.
+    - Update the label from "Target Date" to "Target Year".
+    - _Requirements: 6.5, 12.3, 12.7_
+  - [ ] 11.3 Update `Views/Home/StrategicPlanning.cshtml`
+    - Replace `goal.DueDate` references with `goal.TargetYear?.ToString()`.
+    - Update the "Due:" label display to show the year value (e.g., `<span><i class="bi bi-calendar3 me-1"></i>Target Year: @goal.TargetYear</span>`).
+    - _Requirements: 6.4, 12.3_
+  - [ ] 11.4 Update `Views/Home/_ManagerDashboard.cshtml`
+    - Replace `goal.DueDate` with `goal.TargetYear?.ToString()` in the strategic goals table.
+    - Update the "Due Date" column header to "Target Year".
+    - _Requirements: 6.4, 12.3_
+  - [ ] 11.5 Update `Views/Home/Notifications.cshtml`
+    - Remove the `severityClass` and `severityDotClass` local functions that read `item.Severity`.
+    - Add a local `typeClass` function that maps `item.Type` to CSS classes: `"Alert" → "notification-severity-critical"`, `"Warning" → "notification-severity-warning"`, `_ → "notification-severity-standard"`.
+    - Add a local `typeDotClass` function with the same mapping for dot classes.
+    - Add a local `typeIcon` function: `"Alert" → "bi-x-circle"`, `"Warning" → "bi-exclamation-triangle"`, `_ → "bi-info-circle"`.
+    - Replace all `item.Severity` and `item.Icon` references with calls to the new functions using `item.Type`.
+    - _Requirements: 7.8, 12.4_
+  - [ ] 11.6 Update `Views/Home/KPITracking.cshtml`
+    - Change the `canManage` role check from `role is "Admin" or ...` to `role is "Super Admin" or "Administrator" or "Manager"`.
+    - No structural change needed for perspective display (already reads `kpi.Perspective` string from ViewModel).
+    - _Requirements: 9.7_
+  - [ ] 11.7 Update `Views/Home/StrategicPlanning.cshtml` and `Views/Home/_ManagerDashboard.cshtml` role checks
+    - Change `canManage` role check from `role is "Admin" or "Manager"` to `role is "Super Admin" or "Manager"` in `StrategicPlanning.cshtml`.
+    - _Requirements: 9.7_
+  - [ ]* 11.8 Write unit test for TargetYear display rendering
+    - Verify `TargetYear = 2026` renders as `"2026"` and `TargetYear = null` renders as an empty/absent string.
+    - _Requirements: 6.4_
+
+- [ ] 12. Write database-level property-based tests
+  - [ ]* 12.1 Write property test for Perspective FK restriction
+    - **Property 1: Perspective FK restricts deletion when referenced**
+    - **Validates: Requirements 1.5**
+  - [ ]* 12.2 Write property test for perspective navigation resolution
+    - **Property 2: KPI and StrategicGoal perspective navigation resolves correctly**
+    - **Validates: Requirements 2.4, 2.6, 3.4**
+  - [ ]* 12.3 Write property test for GoalKpis cascade-delete from StrategicGoal side
+    - **Property 3: GoalKpis cascade-delete from StrategicGoal side**
+    - **Validates: Requirements 4.3**
+  - [ ]* 12.4 Write property test for GoalKpis cascade-delete from Kpi side
+    - **Property 4: GoalKpis cascade-delete from Kpi side**
+    - **Validates: Requirements 4.4**
+  - [ ]* 12.5 Write property test for Kpi.CreatedByUserId set-null on user deletion
+    - **Property 5: Kpi.CreatedByUserId set-null on user deletion**
+    - **Validates: Requirements 5.4**
+  - [ ]* 12.6 Write property test for Notification.KpiId set-null on KPI deletion
+    - **Property 8: Notification.KpiId set-null on KPI deletion**
+    - **Validates: Requirements 8.2**
+
+- [ ] 13. Final checkpoint — full build and test run
+  - Ensure all tests pass, ask the user if questions arise.
+  - Run `dotnet build` to confirm the entire solution compiles cleanly.
+  - Run `dotnet test` to confirm all unit and property-based tests pass.
+
+---
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for a faster MVP.
+- Each task references specific requirements for traceability.
+- Checkpoints ensure incremental validation at the model/context layer, the controller/ViewModel layer, and the final full-stack layer.
+- Property tests use FsCheck with a minimum of 100 iterations per property.
+- The migration must be data-preserving: new FK columns are added as nullable, populated via raw SQL, then altered to NOT NULL before the old string columns are dropped.
+- Display-oriented ViewModels (`KpiManagementItemViewModel`, `KpiTrackingItemViewModel`, `KpiRowViewModel`, `ScorecardPerspectiveViewModel`, `BscPerspectiveViewModel`) keep `string Perspective` populated from the navigation property name — only form ViewModels switch to `int PerspectiveId`.

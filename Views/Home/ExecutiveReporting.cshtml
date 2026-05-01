@@ -1,15 +1,10 @@
 @model PeakMetrics.Web.ViewModels.ExecutiveReportingViewModel
 
-@{
-    var logoFallbackScript = "this.style.display='none';";
-}
-
-<!-- Filter bar -->
 <div class="card card-clean mb-4">
     <div class="card-body">
         <div class="row g-3 align-items-end">
             <div class="col-12 col-md-3">
-                <label class="form-label small fw-semibold">Reporting Period</label>
+                <label class="form-label small fw-semibold" for="reportPeriodSelect">Reporting Period</label>
                 <select class="form-select" id="reportPeriodSelect">
                     @if (!Model.AvailablePeriods.Any())
                     {
@@ -26,8 +21,8 @@
                 </select>
             </div>
             <div class="col-12 col-md-6">
-                <label class="form-label small fw-semibold">Include Sections</label>
-                <div class="d-flex gap-3 flex-wrap">
+                <fieldset class="d-flex gap-3 flex-wrap" style="border:none;padding:0;margin:0;">
+                    <legend class="form-label small fw-semibold mb-1 w-100">Include Sections</legend>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="includeScorecard" checked />
                         <label class="form-check-label" for="includeScorecard">Scorecard</label>
@@ -40,7 +35,7 @@
                         <input class="form-check-input" type="checkbox" id="includeGoals" checked />
                         <label class="form-check-label" for="includeGoals">Goals</label>
                     </div>
-                </div>
+                </fieldset>
             </div>
             <div class="col-12 col-md-3">
                 <button class="btn btn-primary-custom w-100" id="generateExecutiveReport">
@@ -73,7 +68,7 @@ else
             <!-- Header -->
             <div class="text-center border-bottom pb-4 mb-4">
                 <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics" class="report-logo-image mb-2"
-                     onerror="@logoFallbackScript" />
+                     id="reportLogoImg" />
                 <h4 class="fw-semibold mb-1">Executive Performance Report</h4>
                 @if (!string.IsNullOrEmpty(Model.SelectedPeriod))
                 {
@@ -220,9 +215,9 @@ else
                             <div class="p-3 rounded bg-light d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <span class="fw-semibold">@goal.Title</span>
-                                    @if (!string.IsNullOrEmpty(goal.DueDate))
+                                    @if (goal.TargetYear.HasValue)
                                     {
-                                        <span class="text-muted small ms-2">Due: @goal.DueDate</span>
+                                        <span class="text-muted small ms-2">Target: @goal.TargetYear</span>
                                     }
                                 </div>
                                 <span class="@statusCss flex-shrink-0">@goal.Status</span>
@@ -234,4 +229,17 @@ else
 
         </div>
     </div>
+}
+
+@section Scripts {
+<script>
+(function () {
+    var logo = document.getElementById('reportLogoImg');
+    if (logo) {
+        logo.addEventListener('error', function () {
+            this.style.display = 'none';
+        });
+    }
+})();
+</script>
 }

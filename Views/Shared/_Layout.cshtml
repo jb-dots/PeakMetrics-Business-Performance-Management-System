@@ -22,19 +22,19 @@
 
     var menuItems = new[]
     {
-        new { Action = "Dashboard",           Label = "Dashboard",            Icon = "bi-speedometer2",       Roles = new[]{ "Admin","Administrator","Manager","User","Executive" } },
-        new { Action = "KPITracking",         Label = "KPI Tracking",         Icon = "bi-bullseye",           Roles = new[]{ "Admin","Manager","User","Executive" } },
-        new { Action = "BalancedScorecard",   Label = "Balanced Scorecards",  Icon = "bi-grid-3x3-gap",       Roles = new[]{ "Admin","Manager","User","Executive" } },
-        new { Action = "PerformanceAnalytics",Label = "Performance Analytics",Icon = "bi-bar-chart",          Roles = new[]{ "Admin","Manager","Executive" } },
-        new { Action = "StrategicPlanning",   Label = "Strategic Planning",   Icon = "bi-lightbulb",          Roles = new[]{ "Admin","Manager","Executive" } },
-        new { Action = "ExecutiveReporting",  Label = "Executive Reporting",  Icon = "bi-file-earmark-text",  Roles = new[]{ "Admin","Manager","Executive" } },
-        new { Action = "DepartmentManagement",Label = "Department Management",Icon = "bi-building",           Roles = new[]{ "Admin","Administrator" } },
-        new { Action = "UserManagement",      Label = "User Management",      Icon = "bi-people",             Roles = new[]{ "Admin","Administrator" } },
-        new { Action = "AuditLog",            Label = "Audit Log",            Icon = "bi-shield-lock",        Roles = new[]{ "Admin" } },
+        new { Action = "Dashboard",           Label = "Dashboard",            Icon = "bi-speedometer2",       Roles = new[]{ "Super Admin","Administrator","Manager","Staff","Executive" } },
+        new { Action = "KPITracking",         Label = "KPI Tracking",         Icon = "bi-bullseye",           Roles = new[]{ "Super Admin","Manager","Staff","Executive" } },
+        new { Action = "BalancedScorecard",   Label = "Balanced Scorecards",  Icon = "bi-grid-3x3-gap",       Roles = new[]{ "Super Admin","Manager","Staff","Executive" } },
+        new { Action = "PerformanceAnalytics",Label = "Performance Analytics",Icon = "bi-bar-chart",          Roles = new[]{ "Super Admin","Manager","Executive" } },
+        new { Action = "StrategicPlanning",   Label = "Strategic Planning",   Icon = "bi-lightbulb",          Roles = new[]{ "Super Admin","Manager","Executive" } },
+        new { Action = "ExecutiveReporting",  Label = "Executive Reporting",  Icon = "bi-file-earmark-text",  Roles = new[]{ "Super Admin","Manager","Executive" } },
+        new { Action = "DepartmentManagement",Label = "Department Management",Icon = "bi-building",           Roles = new[]{ "Super Admin","Administrator" } },
+        new { Action = "UserManagement",      Label = "User Management",      Icon = "bi-people",             Roles = new[]{ "Super Admin","Administrator" } },
+        new { Action = "AuditLog",            Label = "Audit Log",            Icon = "bi-shield-lock",        Roles = new[]{ "Super Admin" } },
     };
 
     var visibleMenuItems = menuItems.Where(m => m.Roles.Contains(sessionUserRole)).ToArray();
-    var canManageKpis    = sessionUserRole is "Admin" or "Administrator" or "Manager";
+    var canManageKpis    = sessionUserRole is "Super Admin" or "Administrator" or "Manager";
 }
 <!DOCTYPE html>
 <html lang="en">

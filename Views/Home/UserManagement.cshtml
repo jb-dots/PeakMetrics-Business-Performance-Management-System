@@ -4,14 +4,14 @@
 {
     <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
         <i class="bi bi-check-circle-fill"></i>
-        <span>@Html.Raw(successMsg)</span>
+        <span>@successMsg</span>
     </div>
 }
 @if (TempData["ErrorMessage"] is string errorMsg)
 {
     <div class="alert alert-danger d-flex align-items-center gap-2 mb-4">
         <i class="bi bi-exclamation-triangle-fill"></i>
-        <span>@Html.Raw(errorMsg)</span>
+        <span>@errorMsg</span>
     </div>
 }
 
@@ -67,7 +67,7 @@
                         {
                             var roleBadgeClass = user.Role switch
                             {
-                                "Admin"         => "bg-danger",
+                                "Super Admin"   => "bg-danger",
                                 "Administrator" => "bg-warning text-dark",
                                 "Manager"       => "bg-primary",
                                 "Executive"     => "bg-purple",

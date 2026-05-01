@@ -1,7 +1,7 @@
 @model PeakMetrics.Web.ViewModels.StrategicPlanningViewModel
 @{
     var role        = ViewData["SessionUserRole"]?.ToString() ?? string.Empty;
-    var canManage   = role is "Admin" or "Manager";
+    var canManage   = role is "Super Admin" or "Manager";
     var showArchived = (bool)(ViewBag.ShowArchived ?? false);
 
     // Perspective config — same as Balanced Scorecards
@@ -30,7 +30,7 @@
 {
     <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
         <i class="bi bi-check-circle-fill"></i>
-        <span>@Html.Raw(successMsg)</span>
+        <span>@successMsg</span>
     </div>
 }
 
@@ -134,9 +134,9 @@ else
                         }
 
                         <div class="d-flex flex-wrap gap-3 small text-muted mt-auto">
-                            @if (!string.IsNullOrWhiteSpace(goal.DueDate))
+                            @if (goal.TargetYear.HasValue)
                             {
-                                <span><i class="bi bi-calendar3 me-1"></i>Due: @goal.DueDate</span>
+                                <span><i class="bi bi-calendar3 me-1"></i>Target: @goal.TargetYear</span>
                             }
                             @if (!string.IsNullOrWhiteSpace(goal.OwnerName))
                             {

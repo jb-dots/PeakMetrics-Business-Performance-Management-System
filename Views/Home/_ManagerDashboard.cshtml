@@ -100,7 +100,7 @@
                                     <th>Title</th>
                                     <th>Perspective</th>
                                     <th>Status</th>
-                                    <th>Due Date</th>
+                                    <th>Target Year</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -117,7 +117,7 @@
                                         <td class="fw-semibold">@goal.Title</td>
                                         <td class="text-muted small">@goal.Perspective</td>
                                         <td><span class="status-badge @statusCss">@goal.Status</span></td>
-                                        <td class="text-muted small">@(goal.DueDate ?? "—")</td>
+                                        <td class="text-muted small">@(goal.TargetYear?.ToString() ?? "—")</td>
                                     </tr>
                                 }
                             </tbody>

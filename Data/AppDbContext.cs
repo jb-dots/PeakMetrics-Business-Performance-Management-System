@@ -7,12 +7,14 @@ public sealed class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<AppUser> Users => Set<AppUser>();
-    public DbSet<Department> Departments => Set<Department>();
-    public DbSet<Kpi> Kpis => Set<Kpi>();
-    public DbSet<KpiLogEntry> KpiLogEntries => Set<KpiLogEntry>();
-    public DbSet<Notification> Notifications => Set<Notification>();
-    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<AppUser>      Users          => Set<AppUser>();
+    public DbSet<Department>   Departments    => Set<Department>();
+    public DbSet<Perspective>  Perspectives   => Set<Perspective>();
+    public DbSet<Kpi>          Kpis           => Set<Kpi>();
+    public DbSet<GoalKpi>      GoalKpis       => Set<GoalKpi>();
+    public DbSet<KpiLogEntry>  KpiLogEntries  => Set<KpiLogEntry>();
+    public DbSet<Notification> Notifications  => Set<Notification>();
+    public DbSet<AuditLog>     AuditLogs      => Set<AuditLog>();
     public DbSet<StrategicGoal> StrategicGoals => Set<StrategicGoal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -43,19 +45,38 @@ public sealed class AppDbContext : DbContext
              .OnDelete(DeleteBehavior.SetNull);
         });
 
+        // ── Perspective ──────────────────────────────────────────────────────
+        modelBuilder.Entity<Perspective>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Name).HasMaxLength(50).IsRequired();
+            e.HasIndex(p => p.Name).IsUnique();
+        });
+
         // ── Kpi ─────────────────────────────────────────────────────────────
         modelBuilder.Entity<Kpi>(e =>
         {
             e.HasKey(k => k.Id);
             e.Property(k => k.Name).HasMaxLength(200).IsRequired();
-            e.Property(k => k.Perspective).HasMaxLength(100).IsRequired();
             e.Property(k => k.Unit).HasMaxLength(50).IsRequired();
             e.Property(k => k.Target).HasColumnType("decimal(18,4)");
+            e.Property(k => k.Frequency).HasMaxLength(20).IsRequired();
+            e.Property(k => k.Status).HasMaxLength(20).IsRequired();
+
+            e.HasOne(k => k.Perspective)
+             .WithMany(p => p.Kpis)
+             .HasForeignKey(k => k.PerspectiveId)
+             .OnDelete(DeleteBehavior.Restrict);
 
             e.HasOne(k => k.Department)
              .WithMany(d => d.Kpis)
              .HasForeignKey(k => k.DepartmentId)
              .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(k => k.CreatedBy)
+             .WithMany()
+             .HasForeignKey(k => k.CreatedByUserId)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ── KpiLogEntry ──────────────────────────────────────────────────────
@@ -77,19 +98,45 @@ public sealed class AppDbContext : DbContext
              .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // ── GoalKpi (join entity) ─────────────────────────────────────────────
+        modelBuilder.Entity<GoalKpi>(e =>
+        {
+            e.HasKey(gk => new { gk.GoalId, gk.KpiId });
+
+            e.HasOne(gk => gk.Goal)
+             .WithMany()
+             .HasForeignKey(gk => gk.GoalId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(gk => gk.Kpi)
+             .WithMany()
+             .HasForeignKey(gk => gk.KpiId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Wire many-to-many navigation through GoalKpi
+        modelBuilder.Entity<StrategicGoal>()
+            .HasMany(g => g.LinkedKpis)
+            .WithMany(k => k.LinkedGoals)
+            .UsingEntity<GoalKpi>();
+
         // ── Notification ─────────────────────────────────────────────────────
         modelBuilder.Entity<Notification>(e =>
         {
             e.HasKey(n => n.Id);
             e.Property(n => n.Title).HasMaxLength(200).IsRequired();
             e.Property(n => n.Message).HasMaxLength(1000).IsRequired();
-            e.Property(n => n.Severity).HasMaxLength(50).IsRequired();
-            e.Property(n => n.Icon).HasMaxLength(100).IsRequired();
+            e.Property(n => n.Type).HasMaxLength(20).IsRequired();
 
             e.HasOne(n => n.User)
              .WithMany(u => u.Notifications)
              .HasForeignKey(n => n.UserId)
              .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(n => n.Kpi)
+             .WithMany()
+             .HasForeignKey(n => n.KpiId)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ── AuditLog ─────────────────────────────────────────────────────────
@@ -111,8 +158,12 @@ public sealed class AppDbContext : DbContext
         {
             e.HasKey(g => g.Id);
             e.Property(g => g.Title).HasMaxLength(300).IsRequired();
-            e.Property(g => g.Perspective).HasMaxLength(100).IsRequired();
             e.Property(g => g.Status).HasMaxLength(50).IsRequired();
+
+            e.HasOne(g => g.Perspective)
+             .WithMany(p => p.Goals)
+             .HasForeignKey(g => g.PerspectiveId)
+             .OnDelete(DeleteBehavior.Restrict);
 
             e.HasOne(g => g.Owner)
              .WithMany()
@@ -134,6 +185,14 @@ public sealed class AppDbContext : DbContext
             new Department { Id = 4, Name = "Operations",       Description = "Process efficiency and delivery",         CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Department { Id = 5, Name = "Customer Service", Description = "Customer satisfaction and support",       CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Department { Id = 6, Name = "Quality",          Description = "Quality assurance and compliance",        CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+        );
+
+        // Perspectives
+        modelBuilder.Entity<Perspective>().HasData(
+            new Perspective { Id = 1, Name = "Financial" },
+            new Perspective { Id = 2, Name = "Customer" },
+            new Perspective { Id = 3, Name = "Internal Process" },
+            new Perspective { Id = 4, Name = "Learning & Growth" }
         );
 
         // Seeded accounts — BCrypt hashes (workFactor: 11) for demo seed data only.
@@ -159,7 +218,7 @@ public sealed class AppDbContext : DbContext
                 FullName     = "System Admin",
                 Email        = "admin@peakmetrics.com",
                 PasswordHash = h1,
-                Role         = "Admin",
+                Role         = "Super Admin",
                 DepartmentId = null,
                 CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive     = true
@@ -181,7 +240,7 @@ public sealed class AppDbContext : DbContext
                 FullName     = "Sarah Johnson",
                 Email        = "sarah@peakmetrics.com",
                 PasswordHash = h3,
-                Role         = "User",
+                Role         = "Staff",
                 DepartmentId = 3,
                 CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive     = true
@@ -192,7 +251,7 @@ public sealed class AppDbContext : DbContext
                 FullName     = "Michael Chen",
                 Email        = "michael@peakmetrics.com",
                 PasswordHash = h3,
-                Role         = "User",
+                Role         = "Staff",
                 DepartmentId = 4,
                 CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive     = true
@@ -203,7 +262,7 @@ public sealed class AppDbContext : DbContext
                 FullName     = "Emily Davis",
                 Email        = "emily@peakmetrics.com",
                 PasswordHash = h3,
-                Role         = "User",
+                Role         = "Staff",
                 DepartmentId = 2,
                 CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive     = true
@@ -232,16 +291,16 @@ public sealed class AppDbContext : DbContext
             }
         );
 
-        // KPIs
+        // KPIs — PerspectiveId replaces the former Perspective string
         modelBuilder.Entity<Kpi>().HasData(
-            new Kpi { Id = 1, Name = "Revenue Growth Rate",      Perspective = "Financial",        Unit = "%",    Target = 15,  DepartmentId = 1, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Kpi { Id = 2, Name = "Net Profit Margin",        Perspective = "Financial",        Unit = "%",    Target = 20,  DepartmentId = 1, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Kpi { Id = 3, Name = "Employee Turnover Rate",   Perspective = "Learning & Growth",Unit = "%",    Target = 10,  DepartmentId = 2, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Kpi { Id = 4, Name = "Training Hours per Staff", Perspective = "Learning & Growth",Unit = "hrs",  Target = 40,  DepartmentId = 2, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Kpi { Id = 5, Name = "Sales Conversion Rate",    Perspective = "Customer",         Unit = "%",    Target = 30,  DepartmentId = 3, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Kpi { Id = 6, Name = "Customer Satisfaction",    Perspective = "Customer",         Unit = "score",Target = 4.5m,DepartmentId = 5, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Kpi { Id = 7, Name = "Process Cycle Time",       Perspective = "Internal Process", Unit = "days", Target = 3,   DepartmentId = 4, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Kpi { Id = 8, Name = "Defect Rate",              Perspective = "Internal Process", Unit = "%",    Target = 2,   DepartmentId = 6, CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new Kpi { Id = 1, Name = "Revenue Growth Rate",      PerspectiveId = 1, Unit = "%",    Target = 15,   DepartmentId = 1, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Kpi { Id = 2, Name = "Net Profit Margin",        PerspectiveId = 1, Unit = "%",    Target = 20,   DepartmentId = 1, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Kpi { Id = 3, Name = "Employee Turnover Rate",   PerspectiveId = 4, Unit = "%",    Target = 10,   DepartmentId = 2, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Kpi { Id = 4, Name = "Training Hours per Staff", PerspectiveId = 4, Unit = "hrs",  Target = 40,   DepartmentId = 2, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Kpi { Id = 5, Name = "Sales Conversion Rate",    PerspectiveId = 2, Unit = "%",    Target = 30,   DepartmentId = 3, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Kpi { Id = 6, Name = "Customer Satisfaction",    PerspectiveId = 2, Unit = "score",Target = 4.5m, DepartmentId = 5, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Kpi { Id = 7, Name = "Process Cycle Time",       PerspectiveId = 3, Unit = "days", Target = 3,    DepartmentId = 4, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Kpi { Id = 8, Name = "Defect Rate",              PerspectiveId = 3, Unit = "%",    Target = 2,    DepartmentId = 6, Frequency = "Monthly", Status = "On Track", CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

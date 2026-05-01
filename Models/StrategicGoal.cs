@@ -8,12 +8,12 @@ public sealed class StrategicGoal
 
     public string? Description { get; set; }
 
-    public string Perspective { get; set; } = string.Empty;
+    public int PerspectiveId { get; set; }
 
     /// <summary>Not Started | In Progress | Completed | Cancelled</summary>
     public string Status { get; set; } = "Not Started";
 
-    public DateTime? DueDate { get; set; }
+    public int? TargetYear { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -22,5 +22,7 @@ public sealed class StrategicGoal
     public bool IsArchived { get; set; } = false;
 
     // Navigation
+    public Perspective Perspective { get; set; } = null!;
     public AppUser? Owner { get; set; }
+    public ICollection<Kpi> LinkedKpis { get; set; } = new List<Kpi>();
 }

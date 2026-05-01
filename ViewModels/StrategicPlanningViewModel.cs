@@ -12,7 +12,7 @@ public sealed class StrategicGoalCardViewModel
     public string? Description { get; init; }
     public string  Perspective { get; init; } = string.Empty;
     public string  Status      { get; init; } = "Not Started";
-    public string? DueDate     { get; init; }
+    public int?    TargetYear  { get; init; }
     public string? OwnerName   { get; init; }
     public bool    IsArchived  { get; init; }
 }
@@ -29,10 +29,14 @@ public sealed class StrategicGoalFormViewModel
     public string? Description { get; set; }
 
     [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Perspective is required.")]
-    public string Perspective { get; set; } = string.Empty;
+    public int PerspectiveId { get; set; }
 
     [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Status is required.")]
     public string Status { get; set; } = "Not Started";
 
-    public DateTime? DueDate { get; set; }
+    [System.ComponentModel.DataAnnotations.Range(2000, 2100, ErrorMessage = "Target year must be between 2000 and 2100.")]
+    public int? TargetYear { get; set; }
+
+    // For dropdown
+    public IReadOnlyList<PerspectiveOptionViewModel> Perspectives { get; set; } = Array.Empty<PerspectiveOptionViewModel>();
 }

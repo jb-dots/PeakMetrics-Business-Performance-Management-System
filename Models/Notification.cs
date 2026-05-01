@@ -10,15 +10,16 @@ public sealed class Notification
 
     public string Message { get; set; } = string.Empty;
 
-    /// <summary>Standard | Warning | Critical</summary>
-    public string Severity { get; set; } = "Standard";
-
-    public string Icon { get; set; } = "bi-info-circle";
+    /// <summary>Alert | Info | Warning</summary>
+    public string Type { get; set; } = "Info";
 
     public bool IsRead { get; set; } = false;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public int? KpiId { get; set; }
+
     // Navigation
     public AppUser User { get; set; } = null!;
+    public Kpi? Kpi { get; set; }
 }

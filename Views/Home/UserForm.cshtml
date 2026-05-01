@@ -6,7 +6,7 @@
     {
         new { Value = "Administrator", Icon = "bi-shield-fill",       Label = "Administrator", Description = "Manages users and departments. Can create and edit KPIs but cannot access audit logs." },
         new { Value = "Manager",       Icon = "bi-person-badge-fill", Label = "Manager",       Description = "Oversees KPI performance across departments. Can log entries and view analytics." },
-        new { Value = "User",          Icon = "bi-person-fill",       Label = "User",          Description = "Standard staff member. Can log KPI entries for their assigned department." },
+        new { Value = "Staff",         Icon = "bi-person-fill",       Label = "Staff",         Description = "Standard staff member. Can log KPI entries for their assigned department." },
         new { Value = "Executive",     Icon = "bi-briefcase-fill",    Label = "Executive",     Description = "Read-only executive view. Sees high-level dashboards and strategic reports." },
     };
 }
@@ -104,7 +104,7 @@
                     {
                         <div class="mb-4">
                             <div class="form-check form-switch">
-                                <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" />
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" />
                                 <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
                                 <div class="text-muted small">Inactive users cannot sign in.</div>
                             </div>

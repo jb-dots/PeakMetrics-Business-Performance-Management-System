@@ -2,7 +2,7 @@
 @{
     var roleColor = Model.Role switch
     {
-        "Admin"         => "#dc2626",
+        "Super Admin"   => "#dc2626",
         "Administrator" => "#d97706",
         "Manager"       => "#2563eb",
         "Executive"     => "#7c3aed",
@@ -14,7 +14,7 @@
 {
     <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
         <i class="bi bi-check-circle-fill"></i>
-        <span>@Html.Raw(successMsg)</span>
+        <span>@successMsg</span>
     </div>
 }
 

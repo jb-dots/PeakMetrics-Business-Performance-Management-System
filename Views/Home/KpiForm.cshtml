@@ -92,21 +92,21 @@
                             <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.DepartmentId)</div>
                         </div>
                         <div class="col-12 col-md-6">
-                            <label asp-for="Perspective" class="form-label fw-semibold">Perspective</label>
-                            <select asp-for="Perspective" class="form-select @(ViewData.ModelState["Perspective"]?.Errors.Count > 0 ? "is-invalid" : "")">
+                            <label asp-for="PerspectiveId" class="form-label fw-semibold">Perspective</label>
+                            <select asp-for="PerspectiveId" class="form-select @(ViewData.ModelState["PerspectiveId"]?.Errors.Count > 0 ? "is-invalid" : "")">
                                 <option value="">— Select Perspective —</option>
-                                @foreach (var p in new[] { "Financial", "Customer", "Internal Process", "Learning & Growth" })
+                                @foreach (var p in Model.Perspectives)
                                 {
-                                    <option value="@p" selected="@(Model.Perspective == p ? "selected" : null)">@p</option>
+                                    <option value="@p.Id" selected="@(Model.PerspectiveId == p.Id ? "selected" : null)">@p.Name</option>
                                 }
                             </select>
-                            <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.Perspective)</div>
+                            <div class="invalid-feedback">@Html.ValidationMessageFor(m => m.PerspectiveId)</div>
                         </div>
                     </div>
 
                     @* ── Measurement Type ── *@
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Measurement Type</label>
+                        <p class="form-label fw-semibold mb-0">Measurement Type</p>
                         <p class="text-muted small mb-2">Choose how this KPI is measured.</p>
                         <div class="row g-2" id="unitCategoryGrid">
                             @foreach (var cat in categories)
@@ -128,7 +128,7 @@
 
                         @* Currency picker — shown only when Currency card is selected *@
                         <div id="currencyPickerWrap" class="mt-3 @(unitCategory == "currency" ? "" : "d-none")">
-                            <label class="form-label fw-semibold small">Select Currency</label>
+                            <label class="form-label fw-semibold small" for="currencySelect">Select Currency</label>
                             <select class="form-select" id="currencySelect">
                                 <option value="">— Choose a currency —</option>
                                 @foreach (var cur in currencies)
@@ -185,7 +185,7 @@
                     {
                         <div class="mb-4">
                             <div class="form-check form-switch">
-                                <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" />
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" />
                                 <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
                                 <div class="text-muted small">Inactive KPIs are hidden from the Log Entry form.</div>
                             </div>
@@ -193,7 +193,7 @@
                     }
 
                     <div class="d-flex gap-2 justify-content-end">
-                        <a asp-controller="Home" asp-action="KpiManagement" class="btn btn-outline-secondary">Cancel</a>
+                        <a asp-controller="Home" asp-action="KPITracking" class="btn btn-outline-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2"
                                 id="kpiSubmitBtn">
                             <i class="bi bi-floppy"></i>

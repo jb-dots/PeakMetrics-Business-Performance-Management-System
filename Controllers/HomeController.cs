@@ -257,6 +257,12 @@ public class HomeController : Controller
     {
         var totalUsers       = await _db.Users.CountAsync(ct);
         var totalDepartments = await _db.Departments.CountAsync(ct);
+        var totalKpis        = await _db.Kpis.CountAsync(k => k.IsActive, ct);
+
+        var activeRoles = await _db.Users
+            .Select(u => u.Role)
+            .Distinct()
+            .CountAsync(ct);
 
         var loggedKpiIdsThisMonth = await GetLoggedKpiIdsThisMonthAsync(ct);
 
@@ -270,10 +276,23 @@ public class HomeController : Controller
         var unreadNotifications = await _db.Notifications
             .CountAsync(n => !n.IsRead, ct);
 
+        // KPI status counts from latest log entry per KPI
+        var latestByKpi = await GetLatestEntriesPerKpiAsync(ct);
+        var kpiOnTrack  = latestByKpi.Count(e => e.Status == StatusOnTrack);
+        var kpiAtRisk   = latestByKpi.Count(e => e.Status == StatusAtRisk);
+        var kpiBehind   = latestByKpi.Count(e => e.Status == StatusBehind);
+
+        // Role distribution for doughnut chart
+        var roleGroups = await _db.Users
+            .GroupBy(u => u.Role)
+            .Select(g => new { Role = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var roleDistribution = roleGroups.ToDictionary(g => g.Role, g => g.Count);
+
         var recentUsers = await _db.Users
             .Include(u => u.Department)
             .OrderByDescending(u => u.CreatedAt)
-            .Take(10)
+            .Take(5)
             .Select(u => new UserRowViewModel(
                 u.FullName,
                 u.Role,
@@ -287,9 +306,15 @@ public class HomeController : Controller
         {
             TotalUsers          = totalUsers,
             TotalDepartments    = totalDepartments,
+            TotalKpis           = totalKpis,
+            ActiveRoles         = activeRoles,
             PendingKpis         = pendingKpis,
             NewUsersThisMonth   = newUsersThisMonth,
             UnreadNotifications = unreadNotifications,
+            KpiOnTrack          = kpiOnTrack,
+            KpiAtRisk           = kpiAtRisk,
+            KpiBehind           = kpiBehind,
+            RoleDistribution    = roleDistribution,
             RecentUsers         = recentUsers,
             Departments         = departments
         });
@@ -592,7 +617,7 @@ public class HomeController : Controller
         bool showArchived = false,
         CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Manager", "Staff", "Executive")) return Forbid();
+        if (!HasAccess("Super Admin", "Administrator", "Manager", "Staff", "Executive")) return Forbid();
         ViewData[VdTitle] = "KPI Tracking";
         ViewBag.ShowArchived = showArchived;
 

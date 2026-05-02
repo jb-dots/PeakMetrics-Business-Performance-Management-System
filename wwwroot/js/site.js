@@ -1,15 +1,15 @@
 (function () {
-    var notificationStoreKey = "pmUnreadNotifications";
-    var sidebarCollapseStoreKey = "pmSidebarCollapsed";
+    const notificationStoreKey = "pmUnreadNotifications";
+    const sidebarCollapseStoreKey = "pmSidebarCollapsed";
 
     function toNumberOrNull(value) {
-        var n = Number(value);
+        const n = Number(value);
         return Number.isFinite(n) && n >= 0 ? n : null;
     }
 
     function getStoredUnreadCount() {
         try {
-            var raw = window.localStorage.getItem(notificationStoreKey);
+            const raw = globalThis.localStorage.getItem(notificationStoreKey);
             return toNumberOrNull(raw);
         } catch (error) {
             return null;
@@ -18,14 +18,14 @@
 
     function setStoredUnreadCount(count) {
         try {
-            window.localStorage.setItem(notificationStoreKey, String(count));
+            globalThis.localStorage.setItem(notificationStoreKey, String(count));
         } catch (error) {
             // Ignore storage failures and keep badge state in-memory for this page load.
         }
     }
 
     function updateQuickUnreadLabel(count) {
-        var quickUnread = document.getElementById("quickNotificationUnreadCount");
+        const quickUnread = document.getElementById("quickNotificationUnreadCount");
         if (quickUnread) quickUnread.textContent = String(count);
     }
 
@@ -35,7 +35,7 @@
         item.setAttribute("data-read", isUnread ? "false" : "true");
         item.classList.toggle("notification-unread", isUnread);
 
-        var dot = item.querySelector(".quick-notification-dot");
+        let dot = item.querySelector(".quick-notification-dot");
         if (isUnread && !dot) {
             dot = document.createElement("span");
             dot.className = "notification-dot quick-notification-dot";
@@ -48,7 +48,7 @@
     }
 
     function applyUnreadCountToQuickList(unreadCount) {
-        var quickItems = Array.from(document.querySelectorAll(".quick-notification-item"));
+        const quickItems = Array.from(document.querySelectorAll(".quick-notification-item"));
         if (quickItems.length === 0) return;
 
         quickItems.forEach(function (item, index) {
@@ -63,7 +63,7 @@
     }
 
     function updateTopbarNotificationBadge(count) {
-        var badge = document.getElementById("topbarNotificationBadge");
+        const badge = document.getElementById("topbarNotificationBadge");
         if (!badge) return;
 
         if (count > 0) {
@@ -87,7 +87,7 @@
             setQuickItemUnreadState(item, false);
         });
 
-        var counter = document.getElementById("unreadNotificationsCount");
+        const counter = document.getElementById("unreadNotificationsCount");
         if (counter) counter.textContent = "0";
 
         updateQuickUnreadLabel(0);
@@ -96,11 +96,11 @@
     }
 
     function syncNotificationBadge() {
-        var notificationItems = document.querySelectorAll(".notification-item");
-        var pageCounter = document.getElementById("unreadNotificationsCount");
+        const notificationItems = document.querySelectorAll(".notification-item");
+        const pageCounter = document.getElementById("unreadNotificationsCount");
 
         if (notificationItems.length > 0) {
-            var unread = document.querySelectorAll(".notification-item.notification-unread").length;
+            const unread = document.querySelectorAll(".notification-item.notification-unread").length;
             if (pageCounter) pageCounter.textContent = String(unread);
             applyUnreadCountToQuickList(unread);
             updateQuickUnreadLabel(unread);
@@ -109,7 +109,7 @@
             return;
         }
 
-        var stored = getStoredUnreadCount();
+        const stored = getStoredUnreadCount();
         if (stored !== null) {
             applyUnreadCountToQuickList(stored);
             updateQuickUnreadLabel(stored);
@@ -117,7 +117,7 @@
             return;
         }
 
-        var quickUnreadCount = getQuickListUnreadCount();
+        const quickUnreadCount = getQuickListUnreadCount();
         if (quickUnreadCount > 0) {
             updateQuickUnreadLabel(quickUnreadCount);
             setStoredUnreadCount(quickUnreadCount);
@@ -125,10 +125,10 @@
             return;
         }
 
-        var badge = document.getElementById("topbarNotificationBadge");
+        const badge = document.getElementById("topbarNotificationBadge");
         if (!badge) return;
-        var fallback = toNumberOrNull(badge.getAttribute("data-default-count"));
-        var fallbackCount = fallback === null ? 0 : fallback;
+        const fallback = toNumberOrNull(badge.getAttribute("data-default-count"));
+        const fallbackCount = fallback === null ? 0 : fallback;
         applyUnreadCountToQuickList(fallbackCount);
         updateQuickUnreadLabel(fallbackCount);
         setStoredUnreadCount(fallbackCount);
@@ -136,10 +136,10 @@
     }
 
     function initBootstrapSidebar() {
-        var mobileSidebar = document.getElementById("mobileSidebar");
-        if (!mobileSidebar || !window.bootstrap || !window.bootstrap.Offcanvas) return;
+        const mobileSidebar = document.getElementById("mobileSidebar");
+        if (!mobileSidebar || !globalThis.bootstrap || !globalThis.bootstrap.Offcanvas) return;
 
-        var offcanvas = window.bootstrap.Offcanvas.getOrCreateInstance(mobileSidebar);
+        const offcanvas = globalThis.bootstrap.Offcanvas.getOrCreateInstance(mobileSidebar);
         mobileSidebar.querySelectorAll(".app-nav-link").forEach(function (link) {
             link.addEventListener("click", function () {
                 offcanvas.hide();
@@ -148,10 +148,10 @@
     }
 
     function initDesktopSidebarCollapse() {
-        var toggleButton = document.getElementById("desktopSidebarToggle");
+        const toggleButton = document.getElementById("desktopSidebarToggle");
         if (!toggleButton) return;
 
-        var collapseIcon = toggleButton.querySelector("i");
+        const collapseIcon = toggleButton.querySelector("i");
 
         function applyCollapsedState(isCollapsed) {
             document.body.classList.toggle("sidebar-collapsed", isCollapsed);
@@ -163,15 +163,15 @@
             }
 
             try {
-                window.localStorage.setItem(sidebarCollapseStoreKey, isCollapsed ? "1" : "0");
+                globalThis.localStorage.setItem(sidebarCollapseStoreKey, isCollapsed ? "1" : "0");
             } catch (error) {
                 // Ignore storage issues and keep in-session behavior.
             }
         }
 
-        var storedState = null;
+        let storedState = null;
         try {
-            storedState = window.localStorage.getItem(sidebarCollapseStoreKey);
+            storedState = globalThis.localStorage.getItem(sidebarCollapseStoreKey);
         } catch (error) {
             storedState = null;
         }
@@ -179,16 +179,16 @@
         applyCollapsedState(storedState === "1");
 
         toggleButton.addEventListener("click", function () {
-            var nextState = !document.body.classList.contains("sidebar-collapsed");
+            const nextState = !document.body.classList.contains("sidebar-collapsed");
             applyCollapsedState(nextState);
         });
     }
 
     function initTopbarNotificationDropdown() {
-        var wrap = document.getElementById("notificationDropdownWrap");
-        var toggle = document.getElementById("notificationDropdownToggle");
-        var panel = document.getElementById("notificationDropdownPanel");
-        var markAllBtn = document.getElementById("markAllTopbarNotificationsRead");
+        const wrap   = document.getElementById("notificationDropdownWrap");
+        const toggle = document.getElementById("notificationDropdownToggle");
+        const panel  = document.getElementById("notificationDropdownPanel");
+        const markAllBtn = document.getElementById("markAllTopbarNotificationsRead");
 
         if (!wrap || !toggle || !panel) return;
 
@@ -197,10 +197,10 @@
         }
 
         function setRovingIndex(nextIndex) {
-            var items = getQuickItems();
+            const items = getQuickItems();
             if (items.length === 0) return;
 
-            var bounded = nextIndex;
+            let bounded = nextIndex;
             if (bounded < 0) bounded = items.length - 1;
             if (bounded >= items.length) bounded = 0;
 
@@ -220,9 +220,9 @@
             updateTopbarNotificationBadge(0);
             setStoredUnreadCount(0);
 
-            var items = getQuickItems();
+            const items = getQuickItems();
             if (items.length > 0) {
-                var firstUnread = items.findIndex(function (item) {
+                const firstUnread = items.findIndex(function (item) {
                     return item.getAttribute("data-read") === "false";
                 });
                 setRovingIndex(firstUnread >= 0 ? firstUnread : 0);
@@ -250,12 +250,12 @@
         }
 
         panel.addEventListener("click", function (event) {
-            var item = event.target.closest(".quick-notification-item");
+            const item = event.target.closest(".quick-notification-item");
             if (!item) return;
 
             if (item.getAttribute("data-read") === "false") {
                 setQuickItemUnreadState(item, false);
-                var unread = getQuickListUnreadCount();
+                const unread = getQuickListUnreadCount();
                 updateQuickUnreadLabel(unread);
                 setStoredUnreadCount(unread);
                 updateTopbarNotificationBadge(unread);
@@ -263,10 +263,10 @@
         });
 
         panel.addEventListener("keydown", function (event) {
-            var items = getQuickItems();
+            const items = getQuickItems();
             if (items.length === 0) return;
 
-            var activeIndex = items.findIndex(function (item) {
+            const activeIndex = items.findIndex(function (item) {
                 return item === document.activeElement;
             });
 
@@ -314,15 +314,15 @@
     }
 
     function toSortableValue(value, type) {
-        var raw = (value || "").trim();
+        const raw = (value || "").trim();
         if (type === "number") {
-            var parsed = Number(raw.replace(/[^\d.-]/g, ""));
+            const parsed = Number(raw.replace(/[^\d.-]/g, ""));
             return Number.isFinite(parsed) ? parsed : 0;
         }
 
         if (type === "date") {
-            var normalized = raw.replace(" ", "T");
-            var timestamp = Date.parse(normalized);
+            const normalized = raw.replace(" ", "T");
+            const timestamp = Date.parse(normalized);
             return Number.isFinite(timestamp) ? timestamp : 0;
         }
 
@@ -330,22 +330,22 @@
     }
 
     function initSortablePaginatedTable(config) {
-        var table = document.getElementById(config.tableId);
+        const table = document.getElementById(config.tableId);
         if (!table) return null;
 
-        var tbody = table.querySelector("tbody");
+        const tbody = table.querySelector("tbody");
         if (!tbody) return null;
 
-        var summary = document.getElementById(config.summaryId);
-        var pagination = document.getElementById(config.paginationId);
-        var pageSizeSelect = document.getElementById(config.pageSizeSelectId);
-        var densityToggle = document.getElementById(config.densityToggleId);
-        var headers = Array.from(table.querySelectorAll("thead th"));
-        var rows = Array.from(tbody.querySelectorAll("tr"));
+        const summary        = document.getElementById(config.summaryId);
+        const pagination     = document.getElementById(config.paginationId);
+        const pageSizeSelect = document.getElementById(config.pageSizeSelectId);
+        const densityToggle  = document.getElementById(config.densityToggleId);
+        const headers        = Array.from(table.querySelectorAll("thead th"));
+        const rows           = Array.from(tbody.querySelectorAll("tr"));
 
         if (rows.length === 0) return null;
 
-        var state = {
+        const state = {
             pageSize: config.pageSize || 5,
             page: 1,
             sortIndex: -1,
@@ -355,7 +355,7 @@
         };
 
         if (pageSizeSelect) {
-            var selectPageSize = Number(pageSizeSelect.value);
+            const selectPageSize = Number(pageSizeSelect.value);
             if (Number.isFinite(selectPageSize) && selectPageSize > 0) {
                 state.pageSize = selectPageSize;
             }
@@ -367,7 +367,7 @@
 
             if (!densityToggle) return;
             Array.from(densityToggle.querySelectorAll("[data-density]")).forEach(function (button) {
-                var isActive = button.getAttribute("data-density") === state.density;
+                const isActive = button.getAttribute("data-density") === state.density;
                 button.classList.toggle("active", isActive);
                 button.setAttribute("aria-pressed", isActive ? "true" : "false");
             });
@@ -392,13 +392,13 @@
         function compareRows(a, b) {
             if (state.sortIndex < 0) return 0;
 
-            var header = headers[state.sortIndex];
-            var sortType = (header && header.getAttribute("data-sort-type")) || "text";
-            var aCell = a.cells[state.sortIndex];
-            var bCell = b.cells[state.sortIndex];
+            const header   = headers[state.sortIndex];
+            const sortType = (header && header.getAttribute("data-sort-type")) || "text";
+            const aCell    = a.cells[state.sortIndex];
+            const bCell    = b.cells[state.sortIndex];
 
-            var aValue = toSortableValue(aCell ? aCell.textContent : "", sortType);
-            var bValue = toSortableValue(bCell ? bCell.textContent : "", sortType);
+            const aValue = toSortableValue(aCell ? aCell.textContent : "", sortType);
+            const bValue = toSortableValue(bCell ? bCell.textContent : "", sortType);
 
             if (aValue > bValue) return 1 * state.sortDirection;
             if (aValue < bValue) return -1 * state.sortDirection;
@@ -419,7 +419,7 @@
 
             if (totalPages <= 1) return;
 
-            var prevBtn = document.createElement("button");
+            const prevBtn = document.createElement("button");
             prevBtn.type = "button";
             prevBtn.textContent = "Prev";
             prevBtn.disabled = state.page <= 1;
@@ -430,11 +430,11 @@
                 }
             });
 
-            var pageIndicator = document.createElement("span");
+            const pageIndicator = document.createElement("span");
             pageIndicator.className = "table-page-indicator";
             pageIndicator.textContent = "Page " + state.page + " of " + totalPages;
 
-            var nextBtn = document.createElement("button");
+            const nextBtn = document.createElement("button");
             nextBtn.type = "button";
             nextBtn.textContent = "Next";
             nextBtn.disabled = state.page >= totalPages;
@@ -451,8 +451,8 @@
         }
 
         function render() {
-            var filteredRows = rows.filter(state.filterFn);
-            var orderedRows = filteredRows.slice();
+            const filteredRows = rows.filter(state.filterFn);
+            const orderedRows  = filteredRows.slice();
 
             if (state.sortIndex >= 0) {
                 orderedRows.sort(compareRows);
@@ -466,12 +466,12 @@
                 tbody.appendChild(row);
             });
 
-            var totalRows = orderedRows.length;
-            var totalPages = Math.max(1, Math.ceil(totalRows / state.pageSize));
+            const totalRows  = orderedRows.length;
+            const totalPages = Math.max(1, Math.ceil(totalRows / state.pageSize));
             if (state.page > totalPages) state.page = totalPages;
 
-            var start = (state.page - 1) * state.pageSize;
-            var end = Math.min(start + state.pageSize, totalRows);
+            const start = (state.page - 1) * state.pageSize;
+            const end   = Math.min(start + state.pageSize, totalRows);
 
             orderedRows.forEach(function (row, index) {
                 row.style.display = index >= start && index < end ? "" : "none";
@@ -510,7 +510,7 @@
 
         if (pageSizeSelect) {
             pageSizeSelect.addEventListener("change", function () {
-                var nextSize = Number(pageSizeSelect.value);
+                const nextSize = Number(pageSizeSelect.value);
                 if (!Number.isFinite(nextSize) || nextSize <= 0) return;
                 state.pageSize = nextSize;
                 state.page = 1;
@@ -520,12 +520,12 @@
 
         if (densityToggle) {
             densityToggle.addEventListener("click", function (event) {
-                var button = event.target.closest("[data-density]");
+                const button = event.target.closest("[data-density]");
                 if (!button) return;
                 applyDensity(button.getAttribute("data-density"));
             });
 
-            var initialDensityBtn = densityToggle.querySelector("[data-density].active") || densityToggle.querySelector("[data-density]");
+            const initialDensityBtn = densityToggle.querySelector("[data-density].active") || densityToggle.querySelector("[data-density]");
             if (initialDensityBtn) {
                 applyDensity(initialDensityBtn.getAttribute("data-density"));
             }
@@ -544,10 +544,10 @@
     }
 
     function initChartFromCanvas(canvasId, type, options) {
-        var el = document.getElementById(canvasId);
-        if (!el || !window.Chart) return;
-        var labels   = JSON.parse(el.dataset.labels   || '[]');
-        var datasets = JSON.parse(el.dataset.datasets || '[]');
+        const el = document.getElementById(canvasId);
+        if (!el || !globalThis.Chart) return;
+        const labels   = JSON.parse(el.dataset.labels   || '[]');
+        const datasets = JSON.parse(el.dataset.datasets || '[]');
         new Chart(el, { type: type, data: { labels: labels, datasets: datasets }, options: options || {} });
     }
 
@@ -582,9 +582,37 @@
         });
     }
 
+    function initAdminCharts() {
+        const el = document.getElementById('adminRoleChart');
+        if (!el || !globalThis.Chart) return;
+        const labels = JSON.parse(el.dataset.labels   || '[]');
+        const values = JSON.parse(el.dataset.datasets || '[]');
+        const colors = ['#1B4FD8', '#0ea5e9', '#16a34a', '#ca8a04', '#7c3aed', '#dc2626'];
+        new Chart(el, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    title: { display: false }
+                }
+            }
+        });
+    }
+
     function initDashboardCharts() {
-        var canvas = document.getElementById("dashboardLineChart");
-        if (!canvas || !window.Chart) return;
+        const canvas = document.getElementById("dashboardLineChart");
+        if (!canvas || !globalThis.Chart) return;
 
         new Chart(canvas, {
             type: "line",
@@ -627,11 +655,11 @@
     }
 
     function initPerformanceCharts() {
-        if (!window.Chart) return;
+        if (!globalThis.Chart) return;
 
-        var line    = document.getElementById("performanceLineChart");
-        var bar     = document.getElementById("performanceBarChart");
-        var doughnut = document.getElementById("performanceDoughnutChart");
+        const line     = document.getElementById("performanceLineChart");
+        const bar      = document.getElementById("performanceBarChart");
+        const doughnut = document.getElementById("performanceDoughnutChart");
 
         if (line) {
             initChartFromCanvas('performanceLineChart', 'line', {
@@ -661,7 +689,7 @@
     }
 
     function initKpiTrackingFilter() {
-        var tableController = initSortablePaginatedTable({
+        const tableController = initSortablePaginatedTable({
             tableId: "kpiTrackingTable",
             summaryId: "kpiTableSummary",
             paginationId: "kpiTablePagination",
@@ -675,41 +703,41 @@
     }
 
     function initKpiLogEntryForm() {
-        var form = document.getElementById("kpiLogEntryForm");
-        var resetBtn = document.getElementById("resetKpiLogForm");
+        const form     = document.getElementById("kpiLogEntryForm");
+        const resetBtn = document.getElementById("resetKpiLogForm");
         if (!form) return;
 
         form.addEventListener("submit", function (event) {
             event.preventDefault();
-            window.alert("KPI entry logged successfully!");
+            globalThis.alert("KPI entry logged successfully!");
             form.reset();
-            var date = form.querySelector("#dateLogged");
+            const date = form.querySelector("#dateLogged");
             if (date) date.value = "2026-04-07";
         });
 
         if (resetBtn) {
             resetBtn.addEventListener("click", function () {
                 form.reset();
-                var date = form.querySelector("#dateLogged");
+                const date = form.querySelector("#dateLogged");
                 if (date) date.value = "2026-04-07";
             });
         }
     }
 
     function initDepartmentSearch() {
-        var input = document.getElementById("departmentSearch");
-        var rows = document.querySelectorAll("#departmentTable tbody tr[data-search]");
-        var noResults = document.getElementById("noDepartmentResults");
+        const input     = document.getElementById("departmentSearch");
+        const rows      = document.querySelectorAll("#departmentTable tbody tr[data-search]");
+        const noResults = document.getElementById("noDepartmentResults");
 
         if (!input || rows.length === 0) return;
 
         input.addEventListener("input", function () {
-            var query = input.value.trim().toLowerCase();
-            var visibleCount = 0;
+            const query = input.value.trim().toLowerCase();
+            let visibleCount = 0;
 
             rows.forEach(function (row) {
-                var hay = (row.getAttribute("data-search") || "").toLowerCase();
-                var isVisible = hay.indexOf(query) > -1;
+                const hay = (row.getAttribute("data-search") || "").toLowerCase();
+                const isVisible = hay.indexOf(query) > -1;
                 row.style.display = isVisible ? "" : "none";
                 if (isVisible) visibleCount++;
             });
@@ -721,9 +749,9 @@
     }
 
     function initAuditFilter() {
-        var actionFilter = document.getElementById("auditActionFilter");
-        var entityFilter = document.getElementById("auditEntityFilter");
-        var tableController = initSortablePaginatedTable({
+        const actionFilter = document.getElementById("auditActionFilter");
+        const entityFilter = document.getElementById("auditEntityFilter");
+        const tableController = initSortablePaginatedTable({
             tableId: "auditTable",
             summaryId: "auditTableSummary",
             paginationId: "auditTablePagination",
@@ -736,8 +764,8 @@
 
         function apply() {
             tableController.setFilter(function (row) {
-                var actionOk = actionFilter.value === "All" || row.getAttribute("data-action") === actionFilter.value;
-                var entityOk = entityFilter.value === "All" || row.getAttribute("data-entity") === entityFilter.value;
+                const actionOk = actionFilter.value === "All" || row.getAttribute("data-action") === actionFilter.value;
+                const entityOk = entityFilter.value === "All" || row.getAttribute("data-entity") === entityFilter.value;
                 return actionOk && entityOk;
             });
         }
@@ -748,8 +776,8 @@
     }
 
     function initExecutiveReportingControls() {
-        var printBtn = document.getElementById("generateExecutiveReport");
-        var sectionMap = {
+        const printBtn = document.getElementById("generateExecutiveReport");
+        const sectionMap = {
             includeScorecard: document.getElementById("execSectionScorecard"),
             includeKPIs: document.getElementById("execSectionKPIs"),
             includeGoals: document.getElementById("execSectionGoals")
@@ -757,13 +785,13 @@
 
         if (printBtn) {
             printBtn.addEventListener("click", function () {
-                window.print();
+                globalThis.print();
             });
         }
 
         Object.keys(sectionMap).forEach(function (id) {
-            var checkbox = document.getElementById(id);
-            var section = sectionMap[id];
+            const checkbox = document.getElementById(id);
+            const section  = sectionMap[id];
             if (!checkbox || !section) return;
 
             function sync() {
@@ -776,7 +804,7 @@
     }
 
     function initNotifications() {
-        var pageMarkAllBtn = document.getElementById("markAllNotificationsRead");
+        const pageMarkAllBtn = document.getElementById("markAllNotificationsRead");
         if (pageMarkAllBtn) {
             pageMarkAllBtn.addEventListener("click", function () {
                 markAllNotificationsAsRead();
@@ -794,7 +822,7 @@
                 }
 
                 button.setAttribute("aria-busy", "true");
-                var originalText = button.textContent || "Retry";
+                const originalText = button.textContent || "Retry";
                 button.setAttribute("data-original-text", originalText);
                 button.innerHTML = "<span class=\"spinner-border spinner-border-sm me-2\" aria-hidden=\"true\"></span>Retrying...";
             });
@@ -806,6 +834,7 @@
         initBootstrapSidebar();
         initTopbarNotificationDropdown();
         initSuperAdminCharts();
+        initAdminCharts();
         initManagerCharts();
         initExecutiveCharts();
         initDashboardCharts();

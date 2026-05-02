@@ -201,15 +201,15 @@ public sealed class AppDbContext : DbContext
         // manager@peakmetrics.com → Manager@123
         // sarah / michael / emily → User@123
         // executive@peakmetrics.com → Executive@123
-        // hradmin@peakmetrics.com → Admin@123
         //
         // Hashes are split across string concatenation to prevent S2068 false-positives;
         // the BCrypt prefix pattern is never a complete literal in source.
+#pragma warning disable S8215 // PasswordHash values are BCrypt hashes for demo seed accounts only — not real credentials
         const string h1 = "$2a$11$" + "K2GAaeAIPqKr7/DQp1xWIuSA95c53aTx071RgaoMS7U4nTO5P1LFG";
         const string h2 = "$2a$11$" + "cA3Cig0PT.t2wVj5yONGl.kQHV4pczXahzNbmghQWOBiN8Q23o212";
         const string h3 = "$2a$11$" + "GTTjD7ErxWlfvdNygzUlaOi0jamF3GIPWHEjSUNyMgXAs3EFm58O6";
         const string h4 = "$2a$11$" + "0yCucsKKCKwaqMLlZewNtugJYHERt1WN6Q7TaM51dHvjwEBKDOe/i";
-        const string h5 = "$2a$11$" + "gIbViYapQPsEwJbISIDvQu/vBawKNXbhzVjJFLfxW9qCfZDAsWaDG";
+#pragma warning restore S8215
 
         modelBuilder.Entity<AppUser>().HasData(
             new AppUser
@@ -275,17 +275,6 @@ public sealed class AppDbContext : DbContext
                 PasswordHash = h4,
                 Role         = "Executive",
                 DepartmentId = null,
-                CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                IsActive     = true
-            },
-            new AppUser
-            {
-                Id           = 7,
-                FullName     = "HR Admin",
-                Email        = "hradmin@peakmetrics.com",
-                PasswordHash = h5,
-                Role         = "Administrator",
-                DepartmentId = 2,
                 CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive     = true
             }

@@ -1,10 +1,13 @@
 @model PeakMetrics.Web.ViewModels.AdministratorDashboardViewModel
+@using System.Text.Json
 
 @{
     var cards = new List<(string Title, string Value, string Icon)>
     {
         ("Total Users",          Model.TotalUsers.ToString(),        "bi-people"),
         ("Total Departments",    Model.TotalDepartments.ToString(),  "bi-building"),
+        ("Total KPIs",           Model.TotalKpis.ToString(),         "bi-bullseye"),
+        ("Active Roles",         Model.ActiveRoles.ToString(),       "bi-person-badge"),
         ("Pending KPIs",         Model.PendingKpis.ToString(),       "bi-hourglass-split"),
         ("New Users This Month", Model.NewUsersThisMonth.ToString(), "bi-person-plus"),
     };
@@ -39,12 +42,78 @@
     </div>
 </div>
 
+<!-- KPI Status Overview + Role Distribution Chart -->
 <div class="row g-4 mb-4">
-    <!-- User List Overview -->
+    <!-- KPI Status Overview -->
+    <div class="col-12 col-lg-6">
+        <div class="card card-clean h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">KPI Status Overview</h5>
+                <p class="text-muted small mb-3">Read-only counts based on the latest log entry per KPI.</p>
+                <div class="row g-3">
+                    <div class="col-4">
+                        <div class="rounded-3 p-3 text-center" style="background:#f0fdf4;">
+                            <div class="fw-bold fs-2" style="color:#16a34a;">@Model.KpiOnTrack</div>
+                            <div class="small fw-semibold mt-1" style="color:#15803d;">
+                                <i class="bi bi-check-circle-fill me-1"></i>On Track
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="rounded-3 p-3 text-center" style="background:#fefce8;">
+                            <div class="fw-bold fs-2" style="color:#ca8a04;">@Model.KpiAtRisk</div>
+                            <div class="small fw-semibold mt-1" style="color:#a16207;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>At Risk
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="rounded-3 p-3 text-center" style="background:#fef2f2;">
+                            <div class="fw-bold fs-2" style="color:#dc2626;">@Model.KpiBehind</div>
+                            <div class="small fw-semibold mt-1" style="color:#b91c1c;">
+                                <i class="bi bi-x-circle-fill me-1"></i>Behind
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Role Distribution Chart -->
+    <div class="col-12 col-lg-6">
+        <div class="card card-clean h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">User Role Distribution</h5>
+                @if (Model.RoleDistribution.Count == 0)
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-pie-chart fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No role data available.</p>
+                    </div>
+                }
+                else
+                {
+                    <canvas id="adminRoleChart"
+                            data-labels="@JsonSerializer.Serialize(Model.RoleDistribution.Keys.ToList())"
+                            data-datasets="@JsonSerializer.Serialize(Model.RoleDistribution.Values.ToList())"
+                            style="max-height:220px;"></canvas>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Recent Users (top 5) -->
     <div class="col-12 col-lg-8">
         <div class="card card-clean">
             <div class="card-body">
-                <h5 class="card-title mb-3">Recent Users</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Recent Users</h5>
+                    <a asp-controller="Home" asp-action="UserManagement"
+                       class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
                 @if (!Model.RecentUsers.Any())
                 {
                     <div class="text-center py-4 text-muted">

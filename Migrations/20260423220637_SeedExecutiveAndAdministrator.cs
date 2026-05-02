@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 // Real passwords must be set via the application's Change Password feature after first login.
 // These hashes do not represent any real credential and cannot be used to authenticate.
 #pragma warning disable S2068 // Credentials should not be hard-coded
+#pragma warning disable S8215 // Password hashes should not be disclosed
 
 namespace PeakMetrics.Web.Migrations
 {
@@ -26,8 +27,7 @@ namespace PeakMetrics.Web.Migrations
                 columns: new[] { "Id", "CreatedAt", "DepartmentId", "Email", "FullName", "IsActive", "LastLoginAt", "PasswordHash", "Role" },
                 values: new object[,]
                 {
-                    { 6, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "executive@peakmetrics.com", "Executive User", true, null, PlaceholderHash, "Executive" },
-                    { 7, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 2, "hradmin@peakmetrics.com", "HR Admin", true, null, PlaceholderHash, "Administrator" }
+                    { 6, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "executive@peakmetrics.com", "Executive User", true, null, PlaceholderHash, "Executive" }
                 });
         }
 
@@ -38,13 +38,9 @@ namespace PeakMetrics.Web.Migrations
                 table: "Users",
                 keyColumn: "Id",
                 keyValue: 6);
-
-            migrationBuilder.DeleteData(
-                table: "Users",
-                keyColumn: "Id",
-                keyValue: 7);
         }
     }
 }
 
 #pragma warning restore S2068
+#pragma warning restore S8215

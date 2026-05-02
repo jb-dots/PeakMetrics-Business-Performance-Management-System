@@ -6,14 +6,13 @@ Replace the single generic `Dashboard` view with five role-tailored dashboards. 
 
 ## Tasks
 
-- [x] 1. Add EF Core migration to seed Executive and Administrator accounts
+- [x] 1. Add EF Core migration to seed Executive account
   - Create a new migration class `SeedExecutiveAndAdministrator` in `Migrations/`
   - Use `migrationBuilder.InsertData` on the `Users` table following the same pattern as `SeedRealAccounts`
   - Insert Id=6 `executive@peakmetrics.com` / `Executive@123` / role `Executive` / DepartmentId null
-  - Insert Id=7 `hradmin@peakmetrics.com` / `Admin@123` / role `Administrator` / DepartmentId 2 (HR)
   - Pre-compute BCrypt hashes at work factor 11 and embed them directly in the migration (do not call BCrypt at runtime)
-  - Implement the `Down()` method using `migrationBuilder.DeleteData` for both rows
-  - Update `AppDbContextModelSnapshot.cs` to reflect the two new rows
+  - Implement the `Down()` method using `migrationBuilder.DeleteData` for the row
+  - Update `AppDbContextModelSnapshot.cs` to reflect the new row
   - _Requirements: 7.1, 7.2_
 
 - [x] 2. Create supporting ViewModel record types

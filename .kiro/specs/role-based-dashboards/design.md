@@ -6,7 +6,7 @@ This document describes the technical design for replacing the single generic `D
 
 The implementation stays entirely within the existing ASP.NET Core 8 MVC + EF Core + SQL Server stack. No new controllers, no new routes, and no schema changes are required. The single `HomeController.Dashboard` action becomes a dispatcher that reads the session role and delegates to a role-specific view model builder. Each role gets its own strongly-typed ViewModel and its own Razor partial view rendered inside the existing `Dashboard.cshtml` shell.
 
-Two new seeded accounts (`executive@peakmetrics.com` and `hradmin@peakmetrics.com`) are added via a new EF Core migration. The sidebar's KPI Management gate is widened to include the `Administrator` role alongside the existing `Admin` and `Manager` check.
+Two new seeded accounts (`executive@peakmetrics.com`) are added via a new EF Core migration. The sidebar's KPI Management gate is widened to include the `Administrator` role alongside the existing `Admin` and `Manager` check.
 
 ---
 
@@ -321,7 +321,6 @@ A new EF Core migration `SeedExecutiveAndAdministrator` adds two `AppUser` rows.
 | Id | FullName | Email | Password (plain) | Role | DepartmentId |
 |---|---|---|---|---|---|
 | 6 | Executive User | executive@peakmetrics.com | Executive@123 | Executive | null |
-| 7 | HR Admin | hradmin@peakmetrics.com | Admin@123 | Administrator | 2 (HR) |
 
 The migration uses `migrationBuilder.InsertData` and does **not** touch `OnModelCreating` seed data, keeping the two seeding mechanisms separate and avoiding snapshot conflicts.
 

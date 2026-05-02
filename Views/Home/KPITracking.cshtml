@@ -2,7 +2,8 @@
 @{
     var kpis = Model?.Kpis ?? Array.Empty<KpiTrackingItemViewModel>();
     var role = ViewData["SessionUserRole"]?.ToString() ?? string.Empty;
-    var canManage = role is "Super Admin" or "Administrator" or "Manager";
+    var canManage = role is "Super Admin" or "Manager";
+    var canCreate = role is "Super Admin" or "Manager";
     var showArchived = (bool)(ViewBag.ShowArchived ?? false);
 }
 
@@ -32,14 +33,14 @@
                         <i class="bi bi-archive me-1"></i> Archived
                     </a>
                 </div>
-                @if (canManage && !showArchived)
+                @if (canCreate && !showArchived)
                 {
                     <a asp-controller="Home" asp-action="KpiCreate"
                        class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
                         <i class="bi bi-plus-lg"></i> New KPI
                     </a>
                 }
-                @if (!showArchived)
+                @if (!showArchived && canManage)
                 {
                     <a asp-controller="Home" asp-action="KPILogEntry"
                        class="btn btn-sm btn-primary-custom d-inline-flex align-items-center gap-1">

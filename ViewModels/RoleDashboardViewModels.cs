@@ -29,7 +29,19 @@ public sealed class AdministratorDashboardViewModel
     public int NewUsersThisMonth   { get; init; }
     public int UnreadNotifications { get; init; }
 
-    // User list overview (top 10 most recently created)
+    // New summary cards
+    public int TotalKpis           { get; init; }
+    public int ActiveRoles         { get; init; }
+
+    // KPI status overview (read-only counts from latest log entries)
+    public int KpiOnTrack          { get; init; }
+    public int KpiAtRisk           { get; init; }
+    public int KpiBehind           { get; init; }
+
+    // Role distribution chart: key = role string, value = count
+    public IReadOnlyDictionary<string, int> RoleDistribution { get; init; } = new Dictionary<string, int>();
+
+    // User list overview (top 5 most recently created)
     public IReadOnlyList<UserRowViewModel> RecentUsers { get; init; } = Array.Empty<UserRowViewModel>();
 
     // Department summary table

@@ -12,6 +12,7 @@
             const raw = globalThis.localStorage.getItem(notificationStoreKey);
             return toNumberOrNull(raw);
         } catch (error) {
+            console.warn("Failed to read notification count from localStorage:", error);
             return null;
         }
     }
@@ -20,7 +21,7 @@
         try {
             globalThis.localStorage.setItem(notificationStoreKey, String(count));
         } catch (error) {
-            // Ignore storage failures and keep badge state in-memory for this page load.
+            console.warn("Failed to write notification count to localStorage:", error);
         }
     }
 
@@ -32,7 +33,7 @@
     function setQuickItemUnreadState(item, isUnread) {
         if (!item) return;
 
-        item.setAttribute("data-read", isUnread ? "false" : "true");
+        item.dataset.read = isUnread ? "false" : "true";
         item.classList.toggle("notification-unread", isUnread);
 
         let dot = item.querySelector(".quick-notification-dot");
@@ -127,8 +128,8 @@
 
         const badge = document.getElementById("topbarNotificationBadge");
         if (!badge) return;
-        const fallback = toNumberOrNull(badge.getAttribute("data-default-count"));
-        const fallbackCount = fallback === null ? 0 : fallback;
+        const fallback = toNumberOrNull(badge.dataset.defaultCount);
+        const fallbackCount = fallback ?? 0;
         applyUnreadCountToQuickList(fallbackCount);
         updateQuickUnreadLabel(fallbackCount);
         setStoredUnreadCount(fallbackCount);
@@ -137,7 +138,7 @@
 
     function initBootstrapSidebar() {
         const mobileSidebar = document.getElementById("mobileSidebar");
-        if (!mobileSidebar || !globalThis.bootstrap || !globalThis.bootstrap.Offcanvas) return;
+        if (!mobileSidebar || !globalThis.bootstrap?.Offcanvas) return;
 
         const offcanvas = globalThis.bootstrap.Offcanvas.getOrCreateInstance(mobileSidebar);
         mobileSidebar.querySelectorAll(".app-nav-link").forEach(function (link) {
@@ -165,7 +166,7 @@
             try {
                 globalThis.localStorage.setItem(sidebarCollapseStoreKey, isCollapsed ? "1" : "0");
             } catch (error) {
-                // Ignore storage issues and keep in-session behavior.
+                console.warn("Failed to persist sidebar state to localStorage:", error);
             }
         }
 
@@ -173,7 +174,7 @@
         try {
             storedState = globalThis.localStorage.getItem(sidebarCollapseStoreKey);
         } catch (error) {
-            storedState = null;
+            console.warn("Failed to read sidebar state from localStorage:", error);
         }
 
         applyCollapsedState(storedState === "1");
@@ -185,9 +186,9 @@
     }
 
     function initTopbarNotificationDropdown() {
-        const wrap   = document.getElementById("notificationDropdownWrap");
-        const toggle = document.getElementById("notificationDropdownToggle");
-        const panel  = document.getElementById("notificationDropdownPanel");
+        const wrap     = document.getElementById("notificationDropdownWrap");
+        const toggle   = document.getElementById("notificationDropdownToggle");
+        const panel    = document.getElementById("notificationDropdownPanel");
         const markAllBtn = document.getElementById("markAllTopbarNotificationsRead");
 
         if (!wrap || !toggle || !panel) return;
@@ -200,9 +201,7 @@
             const items = getQuickItems();
             if (items.length === 0) return;
 
-            let bounded = nextIndex;
-            if (bounded < 0) bounded = items.length - 1;
-            if (bounded >= items.length) bounded = 0;
+            const bounded = Math.max(0, Math.min(nextIndex, items.length - 1));
 
             items.forEach(function (item, index) {
                 item.setAttribute("tabindex", index === bounded ? "0" : "-1");
@@ -222,9 +221,9 @@
 
             const items = getQuickItems();
             if (items.length > 0) {
-                const firstUnread = items.findIndex(function (item) {
-                    return item.getAttribute("data-read") === "false";
-                });
+                const firstUnread = items.indexOf(items.find(function (item) {
+                    return item.dataset.read === "false";
+                }));
                 setRovingIndex(firstUnread >= 0 ? firstUnread : 0);
             }
         }
@@ -253,7 +252,7 @@
             const item = event.target.closest(".quick-notification-item");
             if (!item) return;
 
-            if (item.getAttribute("data-read") === "false") {
+            if (item.dataset.read === "false") {
                 setQuickItemUnreadState(item, false);
                 const unread = getQuickListUnreadCount();
                 updateQuickUnreadLabel(unread);
@@ -266,9 +265,7 @@
             const items = getQuickItems();
             if (items.length === 0) return;
 
-            const activeIndex = items.findIndex(function (item) {
-                return item === document.activeElement;
-            });
+            const activeIndex = items.indexOf(document.activeElement);
 
             if (event.key === "ArrowDown") {
                 event.preventDefault();
@@ -314,14 +311,14 @@
     }
 
     function toSortableValue(value, type) {
-        const raw = (value || "").trim();
+        const raw = (value ?? "").trim();
         if (type === "number") {
-            const parsed = Number(raw.replace(/[^\d.-]/g, ""));
+            const parsed = Number(raw.replaceAll(/[^\d.-]/g, ""));
             return Number.isFinite(parsed) ? parsed : 0;
         }
 
         if (type === "date") {
-            const normalized = raw.replace(" ", "T");
+            const normalized = raw.replaceAll(" ", "T");
             const timestamp = Date.parse(normalized);
             return Number.isFinite(timestamp) ? timestamp : 0;
         }
@@ -367,7 +364,7 @@
 
             if (!densityToggle) return;
             Array.from(densityToggle.querySelectorAll("[data-density]")).forEach(function (button) {
-                const isActive = button.getAttribute("data-density") === state.density;
+                const isActive = button.dataset.density === state.density;
                 button.classList.toggle("active", isActive);
                 button.setAttribute("aria-pressed", isActive ? "true" : "false");
             });
@@ -393,12 +390,12 @@
             if (state.sortIndex < 0) return 0;
 
             const header   = headers[state.sortIndex];
-            const sortType = (header && header.getAttribute("data-sort-type")) || "text";
+            const sortType = header?.dataset.sortType ?? "text";
             const aCell    = a.cells[state.sortIndex];
             const bCell    = b.cells[state.sortIndex];
 
-            const aValue = toSortableValue(aCell ? aCell.textContent : "", sortType);
-            const bValue = toSortableValue(bCell ? bCell.textContent : "", sortType);
+            const aValue = toSortableValue(aCell?.textContent, sortType);
+            const bValue = toSortableValue(bCell?.textContent, sortType);
 
             if (aValue > bValue) return 1 * state.sortDirection;
             if (aValue < bValue) return -1 * state.sortDirection;
@@ -407,11 +404,9 @@
 
         function renderPagination(totalItems, totalPages, startIndex, endIndex) {
             if (summary) {
-                if (totalItems === 0) {
-                    summary.textContent = "No records found";
-                } else {
-                    summary.textContent = "Showing " + (startIndex + 1) + "-" + endIndex + " of " + totalItems;
-                }
+                summary.textContent = totalItems === 0
+                    ? "No records found"
+                    : "Showing " + (startIndex + 1) + "-" + endIndex + " of " + totalItems;
             }
 
             if (!pagination) return;
@@ -522,12 +517,12 @@
             densityToggle.addEventListener("click", function (event) {
                 const button = event.target.closest("[data-density]");
                 if (!button) return;
-                applyDensity(button.getAttribute("data-density"));
+                applyDensity(button.dataset.density);
             });
 
             const initialDensityBtn = densityToggle.querySelector("[data-density].active") || densityToggle.querySelector("[data-density]");
             if (initialDensityBtn) {
-                applyDensity(initialDensityBtn.getAttribute("data-density"));
+                applyDensity(initialDensityBtn.dataset.density);
             }
         }
 
@@ -736,8 +731,8 @@
             let visibleCount = 0;
 
             rows.forEach(function (row) {
-                const hay = (row.getAttribute("data-search") || "").toLowerCase();
-                const isVisible = hay.indexOf(query) > -1;
+                const hay = (row.dataset.search ?? "").toLowerCase();
+                const isVisible = hay.includes(query);
                 row.style.display = isVisible ? "" : "none";
                 if (isVisible) visibleCount++;
             });
@@ -764,8 +759,8 @@
 
         function apply() {
             tableController.setFilter(function (row) {
-                const actionOk = actionFilter.value === "All" || row.getAttribute("data-action") === actionFilter.value;
-                const entityOk = entityFilter.value === "All" || row.getAttribute("data-entity") === entityFilter.value;
+                const actionOk = actionFilter.value === "All" || row.dataset.action === actionFilter.value;
+                const entityOk = entityFilter.value === "All" || row.dataset.entity === entityFilter.value;
                 return actionOk && entityOk;
             });
         }
@@ -823,7 +818,7 @@
 
                 button.setAttribute("aria-busy", "true");
                 const originalText = button.textContent || "Retry";
-                button.setAttribute("data-original-text", originalText);
+                button.dataset.originalText = originalText;
                 button.innerHTML = "<span class=\"spinner-border spinner-border-sm me-2\" aria-hidden=\"true\"></span>Retrying...";
             });
         });

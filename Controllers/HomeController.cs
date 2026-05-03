@@ -302,11 +302,11 @@ public class HomeController : Controller
 
         var departments = await GetDepartmentOverviewAsync(ct);
 
-        // System logs: only non-admin user movements (exclude Super Admin and Administrator)
-        var nonAdminRoles = new[] { RoleManager, RoleStaff, RoleExecutive };
+        // System logs: Administrator's own activity + roles below (exclude Super Admin only)
+        var nonSuperAdminRoles = new[] { RoleAdministrator, RoleManager, RoleStaff, RoleExecutive };
         var recentSystemLogs = await _db.AuditLogs
             .Include(a => a.User)
-            .Where(a => a.User != null && nonAdminRoles.Contains(a.User.Role))
+            .Where(a => a.User != null && nonSuperAdminRoles.Contains(a.User.Role))
             .OrderByDescending(a => a.OccurredAt)
             .Take(10)
             .Select(a => new AuditLogRowViewModel(
@@ -1810,15 +1810,15 @@ public class HomeController : Controller
         ViewData[VdTitle] = "System Logs";
 
         var role = HttpContext.Session.GetString(SessionUserRole) ?? string.Empty;
-        var nonAdminRoles = new[] { RoleManager, RoleStaff, RoleExecutive };
+        var nonSuperAdminRoles = new[] { RoleAdministrator, RoleManager, RoleStaff, RoleExecutive };
 
-        // Super Admin sees all logs; Administrator sees only non-admin user logs
+        // Super Admin sees all logs; Administrator sees their own + roles below them
         var query = _db.AuditLogs
             .Include(a => a.User)
             .AsQueryable();
 
         if (role == RoleAdministrator)
-            query = query.Where(a => a.User != null && nonAdminRoles.Contains(a.User.Role));
+            query = query.Where(a => a.User != null && nonSuperAdminRoles.Contains(a.User.Role));
 
         var entries = await query
             .OrderByDescending(a => a.OccurredAt)

@@ -46,6 +46,9 @@ public sealed class AdministratorDashboardViewModel
 
     // Department summary table
     public IReadOnlyList<DepartmentOverviewViewModel> Departments { get; init; } = Array.Empty<DepartmentOverviewViewModel>();
+
+    // System logs: recent movements of non-admin users (top 10)
+    public IReadOnlyList<AuditLogRowViewModel> RecentSystemLogs { get; init; } = Array.Empty<AuditLogRowViewModel>();
 }
 
 public sealed class ManagerDashboardViewModel

@@ -302,6 +302,20 @@ public class HomeController : Controller
 
         var departments = await GetDepartmentOverviewAsync(ct);
 
+        // System logs: only non-admin user movements (exclude Super Admin and Administrator)
+        var nonAdminRoles = new[] { RoleManager, RoleStaff, RoleExecutive };
+        var recentSystemLogs = await _db.AuditLogs
+            .Include(a => a.User)
+            .Where(a => a.User != null && nonAdminRoles.Contains(a.User.Role))
+            .OrderByDescending(a => a.OccurredAt)
+            .Take(10)
+            .Select(a => new AuditLogRowViewModel(
+                a.User != null ? a.User.FullName : "System",
+                a.Action,
+                a.EntityType,
+                ToRelativeTime(a.OccurredAt)))
+            .ToListAsync(ct);
+
         return View(ViewDashboard, new AdministratorDashboardViewModel
         {
             TotalUsers          = totalUsers,
@@ -316,7 +330,8 @@ public class HomeController : Controller
             KpiBehind           = kpiBehind,
             RoleDistribution    = roleDistribution,
             RecentUsers         = recentUsers,
-            Departments         = departments
+            Departments         = departments,
+            RecentSystemLogs    = recentSystemLogs
         });
     }
 
@@ -1784,7 +1799,7 @@ public class HomeController : Controller
     public async Task<IActionResult> AuditLog(CancellationToken cancellationToken = default)
     {
         if (!HasAccess("Super Admin")) return Forbid();
-        ViewData[VdTitle] = "Audit Log";
+        ViewData[VdTitle] = "System Logs";
 
         var entries = await _db.AuditLogs
             .Include(a => a.User)

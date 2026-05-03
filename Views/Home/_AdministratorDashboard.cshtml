@@ -193,3 +193,70 @@
         </div>
     </div>
 </div>
+
+<!-- System Logs: recent user movements (non-admin only) -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card card-clean">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="card-title mb-0">System Logs</h5>
+                        <p class="text-muted small mb-0 mt-1">Recent activity from Managers, Staff, and Executives.</p>
+                    </div>
+                </div>
+                @if (!Model.RecentSystemLogs.Any())
+                {
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-activity fs-1 d-block mb-2 opacity-25"></i>
+                        <p class="mb-0 small">No user activity recorded yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Entity Type</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in Model.RecentSystemLogs)
+                                {
+                                    var nameParts = log.UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                                    var initials  = nameParts.Length >= 2
+                                        ? $"{nameParts[0][0]}{nameParts[^1][0]}"
+                                        : log.UserName[..Math.Min(2, log.UserName.Length)];
+
+                                    var actionCss = log.Action.Contains("Login")   ? "status-badge status-ontrack"
+                                                  : log.Action.Contains("Logout")  ? "status-badge bg-light text-secondary border"
+                                                  : log.Action.Contains("Created") ? "status-badge status-ontrack"
+                                                  : log.Action.Contains("Deleted") ? "status-badge status-behind"
+                                                  : "status-badge status-atrisk";
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-semibold flex-shrink-0"
+                                                     style="width:28px;height:28px;background:#1B4FD8;font-size:0.7rem;">
+                                                    @initials.ToUpperInvariant()
+                                                </div>
+                                                <span class="fw-semibold">@log.UserName</span>
+                                            </div>
+                                        </td>
+                                        <td><span class="@actionCss">@log.Action</span></td>
+                                        <td><span class="badge bg-light text-dark border">@log.EntityType</span></td>
+                                        <td class="text-muted small">@log.RelativeTime</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

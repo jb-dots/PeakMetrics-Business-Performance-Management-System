@@ -93,20 +93,27 @@
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex gap-2 justify-content-end">
-                                        <a asp-controller="Home" asp-action="UserEdit" asp-route-id="@user.Id"
-                                           class="btn btn-sm btn-outline-primary" title="Edit">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <form asp-controller="Home" asp-action="UserToggleActive" asp-route-id="@user.Id"
-                                              method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit"
-                                                    class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
-                                                    title="@(user.IsActive ? "Deactivate" : "Activate")">
-                                                <i class="bi @(user.IsActive ? "bi-person-dash" : "bi-person-check")"></i>
-                                                @(user.IsActive ? "Deactivate" : "Activate")
-                                            </button>
-                                        </form>
+                                        @if (!(ViewData["SessionUserRole"]?.ToString() == "Administrator" && user.Role == "Super Admin"))
+                                        {
+                                            <a asp-controller="Home" asp-action="UserEdit" asp-route-id="@user.Id"
+                                               class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            <form asp-controller="Home" asp-action="UserToggleActive" asp-route-id="@user.Id"
+                                                  method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit"
+                                                        class="btn btn-sm @(user.IsActive ? "btn-outline-warning" : "btn-outline-success")"
+                                                        title="@(user.IsActive ? "Deactivate" : "Activate")">
+                                                    <i class="bi @(user.IsActive ? "bi-person-dash" : "bi-person-check")"></i>
+                                                    @(user.IsActive ? "Deactivate" : "Activate")
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small fst-italic">No actions</span>
+                                        }
                                     </div>
                                 </td>
                             </tr>

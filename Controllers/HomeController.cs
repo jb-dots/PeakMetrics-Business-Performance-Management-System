@@ -1237,7 +1237,7 @@ public class HomeController : Controller
 
     public async Task<IActionResult> ExecutiveReporting(CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Manager", "Executive")) return Forbid();
+        if (!HasAccess("Super Admin", "Administrator", "Manager", "Executive")) return Forbid();
         ViewData[VdTitle] = "Executive Reporting";
 
         // Build available periods from actual log entries
@@ -1702,6 +1702,10 @@ public class HomeController : Controller
         var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user is null) return NotFound();
 
+        // Administrator cannot edit Super Admin accounts
+        var actorRole = HttpContext.Session.GetString(SessionUserRole);
+        if (actorRole == RoleAdministrator && user.Role == RoleAdmin) return Forbid();
+
         var form = new UserFormViewModel
         {
             Id           = user.Id,
@@ -1776,6 +1780,10 @@ public class HomeController : Controller
         var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user is null) return NotFound();
 
+        // Administrator cannot deactivate/activate Super Admin accounts
+        var actorRole = HttpContext.Session.GetString(SessionUserRole);
+        if (actorRole == RoleAdministrator && user.Role == RoleAdmin) return Forbid();
+
         var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
         user.IsActive = !user.IsActive;
 
@@ -1798,11 +1806,21 @@ public class HomeController : Controller
 
     public async Task<IActionResult> SystemLogs(CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin")) return Forbid();
+        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
         ViewData[VdTitle] = "System Logs";
 
-        var entries = await _db.AuditLogs
+        var role = HttpContext.Session.GetString(SessionUserRole) ?? string.Empty;
+        var nonAdminRoles = new[] { RoleManager, RoleStaff, RoleExecutive };
+
+        // Super Admin sees all logs; Administrator sees only non-admin user logs
+        var query = _db.AuditLogs
             .Include(a => a.User)
+            .AsQueryable();
+
+        if (role == RoleAdministrator)
+            query = query.Where(a => a.User != null && nonAdminRoles.Contains(a.User.Role));
+
+        var entries = await query
             .OrderByDescending(a => a.OccurredAt)
             .Take(200)
             .Select(a => new AuditLogEntryViewModel

@@ -1796,7 +1796,7 @@ public class HomeController : Controller
         return RedirectToAction(nameof(UserManagement));
     }
 
-    public async Task<IActionResult> AuditLog(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> SystemLogs(CancellationToken cancellationToken = default)
     {
         if (!HasAccess("Super Admin")) return Forbid();
         ViewData[VdTitle] = "System Logs";

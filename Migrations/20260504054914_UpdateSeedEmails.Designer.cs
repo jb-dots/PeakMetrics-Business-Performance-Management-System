@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PeakMetrics.Web.Data;
 
@@ -11,9 +12,11 @@ using PeakMetrics.Web.Data;
 namespace PeakMetrics.Web.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260504054914_UpdateSeedEmails")]
+    partial class UpdateSeedEmails
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -76,7 +79,8 @@ namespace PeakMetrics.Web.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "superadmin@peakmetrics.com",
+                            Email = "admin@peakmetrics.com",
+                            FullName = "System Admin",
                             IsActive = true,
                             PasswordHash = "$2a$11$K2GAaeAIPqKr7/DQp1xWIuSA95c53aTx071RgaoMS7U4nTO5P1LFG",
                             Role = "Super Admin"

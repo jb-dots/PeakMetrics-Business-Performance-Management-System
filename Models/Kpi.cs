@@ -1,17 +1,25 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PeakMetrics.Web.Models;
 
 public sealed class Kpi
 {
     public int Id { get; set; }
 
+    [Required(ErrorMessage = "KPI name is required.")]
+    [StringLength(100, ErrorMessage = "KPI name cannot exceed 100 characters.")]
     public string Name { get; set; } = string.Empty;
 
     public int PerspectiveId { get; set; }
 
+    [Required(ErrorMessage = "Unit is required.")]
+    [StringLength(50)]
     public string Unit { get; set; } = string.Empty; // %, score, days, hrs, etc.
 
+    [Range(0, double.MaxValue, ErrorMessage = "Target must be a non-negative number.")]
     public decimal Target { get; set; }
 
+    [StringLength(500)]
     public string? Description { get; set; }
 
     public int DepartmentId { get; set; }

@@ -127,40 +127,167 @@ public class HomeController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var user = await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == model.Email && u.IsActive, cancellationToken);
+        // Load only the columns that existed before the lockout migration,
+        // so login works even if the migration hasn't applied yet on the host.
+        var userCore = await _db.Users
+            .Where(u => u.Email == model.Email && u.IsActive)
+            .Select(u => new
+            {
+                u.Id,
+                u.FullName,
+                u.Email,
+                u.PasswordHash,
+                u.Role
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (user is null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
+        if (userCore is null || !BCrypt.Net.BCrypt.Verify(model.Password, userCore.PasswordHash))
         {
+            // Try to record the failed attempt / lockout — but don't crash login if
+            // the new columns don't exist yet (migration pending on this host).
+            if (userCore is not null)
+            {
+                try
+                {
+                    var userForLockout = await _db.Users.FindAsync(new object[] { userCore.Id }, cancellationToken);
+                    if (userForLockout is not null)
+                    {
+                        userForLockout.FailedLoginAttempts = (userForLockout.FailedLoginAttempts ?? 0) + 1;
+
+                        if (userForLockout.FailedLoginAttempts >= 5)
+                        {
+                            userForLockout.LockoutEnd          = DateTime.UtcNow.AddMinutes(15);
+                            userForLockout.FailedLoginAttempts = 0;
+
+                            _db.AuditLogs.Add(new AuditLog
+                            {
+                                UserId     = userCore.Id,
+                                Action     = "AccountLocked",
+                                EntityType = "Auth",
+                                EntityId   = userCore.Id,
+                                Details    = $"{userCore.Email} account locked after too many failed attempts.",
+                                OccurredAt = DateTime.UtcNow
+                            });
+                            await _db.SaveChangesAsync(cancellationToken);
+
+                            ModelState.AddModelError(string.Empty,
+                                "Too many failed login attempts. Your account has been locked for 15 minutes. Please try again later.");
+                            return View(model);
+                        }
+
+                        _db.AuditLogs.Add(new AuditLog
+                        {
+                            UserId     = userCore.Id,
+                            Action     = "FailedLogin",
+                            EntityType = "Auth",
+                            EntityId   = userCore.Id,
+                            Details    = $"Failed login attempt for {userCore.Email}.",
+                            OccurredAt = DateTime.UtcNow
+                        });
+                        await _db.SaveChangesAsync(cancellationToken);
+                    }
+                }
+                catch
+                {
+                    // Lockout columns not yet migrated — log attempt without lockout tracking
+                    try
+                    {
+                        _db.AuditLogs.Add(new AuditLog
+                        {
+                            UserId     = userCore.Id,
+                            Action     = "FailedLogin",
+                            EntityType = "Auth",
+                            EntityId   = userCore.Id,
+                            Details    = $"Failed login attempt for {userCore.Email}.",
+                            OccurredAt = DateTime.UtcNow
+                        });
+                        await _db.SaveChangesAsync(cancellationToken);
+                    }
+                    catch { /* audit log failure must never block login */ }
+                }
+            }
+            else
+            {
+                try
+                {
+                    _db.AuditLogs.Add(new AuditLog
+                    {
+                        UserId     = null,
+                        Action     = "FailedLogin",
+                        EntityType = "Auth",
+                        Details    = $"Failed login attempt for {model.Email}.",
+                        OccurredAt = DateTime.UtcNow
+                    });
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+                catch { /* audit log failure must never block login */ }
+            }
+
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
             return View(model);
         }
 
-        var parts    = user.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        // Check lockout — only if columns exist (migration applied)
+        try
+        {
+            var userForLockoutCheck = await _db.Users.FindAsync(new object[] { userCore.Id }, cancellationToken);
+            if (userForLockoutCheck is not null
+                && userForLockoutCheck.LockoutEnd.HasValue
+                && userForLockoutCheck.LockoutEnd.Value > DateTime.UtcNow)
+            {
+                ModelState.AddModelError(string.Empty,
+                    "Too many failed login attempts. Your account has been locked for 15 minutes. Please try again later.");
+                return View(model);
+            }
+        }
+        catch { /* lockout columns not yet migrated — skip lockout check */ }
+
+        // Successful login
+        var parts    = userCore.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var initials = parts.Length >= 2
             ? $"{parts[0][0]}{parts[^1][0]}"
-            : user.FullName[..Math.Min(2, user.FullName.Length)];
+            : userCore.FullName[..Math.Min(2, userCore.FullName.Length)];
 
-        HttpContext.Session.SetInt32(SessionUserId,        user.Id);
-        HttpContext.Session.SetString(SessionUserName,     user.FullName);
-        HttpContext.Session.SetString(SessionUserRole,     user.Role);
+        HttpContext.Session.SetInt32(SessionUserId,        userCore.Id);
+        HttpContext.Session.SetString(SessionUserName,     userCore.FullName);
+        HttpContext.Session.SetString(SessionUserRole,     userCore.Role);
         HttpContext.Session.SetString(SessionUserInitials, initials.ToUpperInvariant());
 
-        await _db.Users
-            .Where(u => u.Id == user.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTime.UtcNow), cancellationToken);
-
-        _db.AuditLogs.Add(new AuditLog
+        // Update LastLoginAt — always safe (column existed before our changes)
+        try
         {
-            UserId     = user.Id,
-            Action     = "Login",
-            EntityType = EntityAppUser,
-            EntityId   = user.Id,
-            Details    = $"{user.FullName} signed in.",
-            OccurredAt = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync(cancellationToken);
+            await _db.Users
+                .Where(u => u.Id == userCore.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(u => u.LastLoginAt,         DateTime.UtcNow)
+                    .SetProperty(u => u.FailedLoginAttempts, 0)
+                    .SetProperty(u => u.LockoutEnd,          (DateTime?)null),
+                cancellationToken);
+        }
+        catch
+        {
+            // Lockout columns not yet migrated — fall back to updating only LastLoginAt
+            await _db.Users
+                .Where(u => u.Id == userCore.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(u => u.LastLoginAt, DateTime.UtcNow),
+                cancellationToken);
+        }
+
+        try
+        {
+            _db.AuditLogs.Add(new AuditLog
+            {
+                UserId     = userCore.Id,
+                Action     = "Login",
+                EntityType = "Auth",
+                EntityId   = userCore.Id,
+                Details    = $"{userCore.FullName} signed in successfully.",
+                OccurredAt = DateTime.UtcNow
+            });
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch { /* audit log failure must never block login */ }
 
         return RedirectToAction(nameof(Dashboard));
     }
@@ -181,7 +308,7 @@ public class HomeController : Controller
             {
                 UserId     = userId.Value,
                 Action     = "Logout",
-                EntityType = EntityAppUser,
+                EntityType = "Auth",
                 EntityId   = userId.Value,
                 Details    = $"{userName} signed out.",
                 OccurredAt = DateTime.UtcNow
@@ -255,6 +382,8 @@ public class HomeController : Controller
     // ── Administrator Dashboard Builder ───────────────────────────────────────
     private async Task<IActionResult> BuildAdminDashboardAsync(CancellationToken ct)
     {
+        var userId = HttpContext.Session.GetInt32(SessionUserId) ?? 0;
+
         var totalUsers       = await _db.Users.CountAsync(ct);
         var totalDepartments = await _db.Departments.CountAsync(ct);
         var totalKpis        = await _db.Kpis.CountAsync(k => k.IsActive, ct);
@@ -274,7 +403,7 @@ public class HomeController : Controller
             .CountAsync(u => u.CreatedAt >= currentMonth, ct);
 
         var unreadNotifications = await _db.Notifications
-            .CountAsync(n => !n.IsRead, ct);
+            .CountAsync(n => n.UserId == userId && !n.IsRead, ct);
 
         // KPI status counts from latest log entry per KPI
         var latestByKpi = await GetLatestEntriesPerKpiAsync(ct);
@@ -1422,6 +1551,12 @@ public class HomeController : Controller
     public IActionResult AccessDenied()
     {
         ViewData[VdTitle] = "Access Denied";
+        return View();
+    }
+
+    public IActionResult Error()
+    {
+        ViewData[VdTitle] = "Error";
         return View();
     }
 

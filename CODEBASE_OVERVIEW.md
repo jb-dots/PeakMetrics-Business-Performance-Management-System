@@ -75,7 +75,7 @@ The single EF Core context. It defines these tables and their relationships:
 | `GoalKpis` | Join table linking strategic goals to KPIs (many-to-many) |
 | `StrategicGoals` | High-level organisational goals |
 | `Notifications` | In-app alerts sent to users when a KPI goes off track |
-| `AuditLogs` | Immutable record of every significant action in the system |
+| `SystemLogs` | Immutable record of every significant action in the system |
 
 ### Key Relationships
 

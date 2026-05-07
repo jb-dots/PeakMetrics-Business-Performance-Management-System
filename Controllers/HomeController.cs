@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using PeakMetrics.Web.Data;
 using PeakMetrics.Web.Models;
+using PeakMetrics.Web.Services;
 using PeakMetrics.Web.ViewModels;
 
 namespace PeakMetrics.Web.Controllers;
@@ -46,15 +47,24 @@ public class HomeController : Controller
     private const string DateFormatShort = "MMM d, yyyy";
 
     private readonly AppDbContext _db;
+    private readonly IEmailService _email;
 
-    public HomeController(AppDbContext db) => _db = db;
+    public HomeController(AppDbContext db, IEmailService email)
+    {
+        _db    = db;
+        _email = email;
+    }
 
     // ── Auth guard ────────────────────────────────────────────────────────────
     public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var action = context.RouteData.Values["action"]?.ToString() ?? string.Empty;
-        var isPublic = string.Equals(action, nameof(Login),  StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(action, nameof(Logout), StringComparison.OrdinalIgnoreCase);
+        var isPublic = string.Equals(action, nameof(Login),          StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(action, nameof(Logout),         StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(action, nameof(Routes),         StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(action, nameof(Diagnostics),    StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(action, nameof(ApiDocs),        StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(action, nameof(ApplyMigration), StringComparison.OrdinalIgnoreCase);
 
         if (!isPublic && HttpContext.Session.GetInt32(SessionUserId) is null)
         {
@@ -71,6 +81,23 @@ public class HomeController : Controller
             var userId = HttpContext.Session.GetInt32(SessionUserId) ?? 0;
             var isNotificationsPage = string.Equals(action, nameof(Notifications), StringComparison.OrdinalIgnoreCase);
             await PopulateQuickNotificationsAsync(userId, isNotificationsPage, context.HttpContext.RequestAborted);
+
+            // ── Pending approvals badge (Admin / Super Admin only) ─────────────
+            var role = HttpContext.Session.GetString(SessionUserRole) ?? string.Empty;
+            if (role is RoleAdmin or RoleAdministrator)
+            {
+                try
+                {
+                    var pendingCount = await _db.Users
+                        .CountAsync(u => u.EmailConfirmed && !u.IsApproved, context.HttpContext.RequestAborted);
+                    ViewData["PendingApprovalsCount"] = pendingCount;
+                }
+                catch
+                {
+                    // AddApprovalFields migration not yet applied — skip badge
+                    ViewData["PendingApprovalsCount"] = 0;
+                }
+            }
         }
 
         await next();
@@ -107,6 +134,128 @@ public class HomeController : Controller
 
     // ── Login ─────────────────────────────────────────────────────────────────
     public IActionResult Index() => RedirectToAction(nameof(Login));
+
+    // ── Pending Users (Admin / Super Admin) ───────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> PendingUsers(CancellationToken cancellationToken = default)
+    {
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
+        ViewData[VdTitle] = "Pending Approvals";
+
+        try
+        {
+            var pending = await _db.Users
+                .Where(u => u.EmailConfirmed && !u.IsApproved)
+                .Include(u => u.Department)
+                .OrderBy(u => u.CreatedAt)
+                .Select(u => new PendingUserViewModel
+                {
+                    Id               = u.Id,
+                    FullName         = u.FullName,
+                    Email            = u.Email,
+                    RequestedRole    = u.PendingRole,
+                    DepartmentName   = u.Department != null ? u.Department.Name : "—",
+                    RegistrationDate = u.CreatedAt
+                })
+                .ToListAsync(cancellationToken);
+
+            return View(pending);
+        }
+        catch
+        {
+            // Columns not yet migrated on this host — return empty list
+            return View(new List<PendingUserViewModel>());
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveUser(int id, CancellationToken cancellationToken = default)
+    {
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
+
+        var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
+        if (user is null) return NotFound();
+
+        var adminId   = HttpContext.Session.GetInt32(SessionUserId) ?? 0;
+        var adminName = HttpContext.Session.GetString(SessionUserName) ?? "Admin";
+
+        // Assign role and department from pending fields
+        user.Role        = user.PendingRole ?? "Staff";
+        user.IsApproved  = true;
+        user.ApprovedAt  = DateTime.UtcNow;
+        user.ApprovedById = adminId.ToString();
+
+        if (!string.IsNullOrWhiteSpace(user.PendingDepartmentId)
+            && int.TryParse(user.PendingDepartmentId, out var deptId))
+        {
+            user.DepartmentId = deptId;
+        }
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId     = adminId,
+            Action     = "UserApproved",
+            EntityType = "Users",
+            EntityId   = user.Id,
+            Details    = $"{adminName} approved {user.FullName}",
+            OccurredAt = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // Send approval email
+        try
+        {
+            var loginUrl = $"{Request.Scheme}://{Request.Host}/Home/Login";
+            await _email.SendApprovalEmailAsync(user.Email, user.FullName, loginUrl, cancellationToken);
+        }
+        catch { /* email failure must not block the action */ }
+
+        TempData[TdSuccessMessage] = $"{user.FullName}'s account has been approved.";
+        return RedirectToAction(nameof(PendingUsers));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectUser(int id, CancellationToken cancellationToken = default)
+    {
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
+
+        var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
+        if (user is null) return NotFound();
+
+        var adminId   = HttpContext.Session.GetInt32(SessionUserId) ?? 0;
+        var adminName = HttpContext.Session.GetString(SessionUserName) ?? "Admin";
+
+        var userName  = user.FullName;
+        var userEmail = user.Email;
+
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId     = adminId,
+            Action     = "UserRejected",
+            EntityType = "Users",
+            EntityId   = user.Id,
+            Details    = $"{adminName} rejected {userName}",
+            OccurredAt = DateTime.UtcNow
+        });
+
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // Send rejection email
+        try
+        {
+            await _email.SendRejectionEmailAsync(userEmail, userName, cancellationToken);
+        }
+        catch { /* email failure must not block the action */ }
+
+        TempData[TdSuccessMessage] = $"{userName}'s account request has been rejected.";
+        return RedirectToAction(nameof(PendingUsers));
+    }
+
+
 
     [HttpGet]
     public IActionResult Login()
@@ -247,6 +396,33 @@ public class HomeController : Controller
         var initials = parts.Length >= 2
             ? $"{parts[0][0]}{parts[^1][0]}"
             : userCore.FullName[..Math.Min(2, userCore.FullName.Length)];
+
+        // ── Approval gate ─────────────────────────────────────────────────────
+        // Wrapped in try/catch so login degrades gracefully if the AddApprovalFields
+        // migration has not yet been applied on this host.
+        try
+        {
+            var fullUser = await _db.Users.FindAsync(new object[] { userCore.Id }, cancellationToken);
+            if (fullUser is not null)
+            {
+                if (!fullUser.EmailConfirmed)
+                {
+                    HttpContext.Session.Clear();
+                    ModelState.AddModelError(string.Empty, "Please verify your email before logging in.");
+                    return View(model);
+                }
+                if (!fullUser.IsApproved)
+                {
+                    HttpContext.Session.Clear();
+                    ModelState.AddModelError(string.Empty, "Your account is pending administrator approval.");
+                    return View(model);
+                }
+            }
+        }
+        catch
+        {
+            // AddApprovalFields migration not yet applied — skip gate, allow login
+        }
 
         HttpContext.Session.SetInt32(SessionUserId,        userCore.Id);
         HttpContext.Session.SetString(SessionUserName,     userCore.FullName);
@@ -1558,6 +1734,251 @@ public class HomeController : Controller
     {
         ViewData[VdTitle] = "Error";
         return View();
+    }
+
+    // ── API Docs (no auth — accessible at /Home/ApiDocs) ─────────────────────
+    [HttpGet]
+    public IActionResult ApiDocs() => View();
+
+    // ── Diagnostics (no auth — accessible at /Home/Diagnostics) ──────────────
+    [HttpGet]
+    public async Task<IActionResult> Diagnostics(CancellationToken cancellationToken = default)
+    {
+        var checks = new System.Text.StringBuilder();
+        checks.AppendLine("=== PeakMetrics Diagnostics ===");
+        checks.AppendLine($"Time (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+        checks.AppendLine($"Environment: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}");
+        checks.AppendLine();
+
+        // ── DB connection ──────────────────────────────────────────────────
+        checks.AppendLine("--- Database ---");
+        try
+        {
+            var canConnect = await _db.Database.CanConnectAsync(cancellationToken);
+            checks.AppendLine($"Connection: {(canConnect ? "OK" : "FAILED")}");
+        }
+        catch (Exception ex)
+        {
+            checks.AppendLine($"Connection: FAILED — {ex.Message}");
+        }
+
+        // ── Check new columns exist ────────────────────────────────────────
+        checks.AppendLine();
+        checks.AppendLine("--- Schema (AddApprovalFields migration) ---");
+        var columns = new[] { "IsApproved", "EmailConfirmed", "ConfirmationToken", "PendingRole", "PendingDepartmentId", "ApprovedAt", "ApprovedById" };
+        foreach (var col in columns)
+        {
+            try
+            {
+                var sql = $"SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = '{col}'";
+                var exists = (await _db.Database.SqlQueryRaw<int>(sql).ToListAsync(cancellationToken)).FirstOrDefault() > 0;
+                checks.AppendLine($"  Users.{col}: {(exists ? "EXISTS" : "MISSING ← migration not applied")}");
+            }
+            catch (Exception ex)
+            {
+                checks.AppendLine($"  Users.{col}: ERROR — {ex.Message}");
+            }
+        }
+
+        // ── Seeded account approval status ────────────────────────────────
+        checks.AppendLine();
+        checks.AppendLine("--- Seeded Accounts ---");
+        try
+        {
+            var seeded = await _db.Users
+                .Where(u => u.Id <= 6)
+                .Select(u => new { u.Id, u.Email, u.IsApproved, u.EmailConfirmed })
+                .ToListAsync(cancellationToken);
+            foreach (var u in seeded)
+                checks.AppendLine($"  [{u.Id}] {u.Email} — IsApproved={u.IsApproved}, EmailConfirmed={u.EmailConfirmed}");
+        }
+        catch (Exception ex)
+        {
+            checks.AppendLine($"  ERROR reading users: {ex.Message}");
+        }
+
+        // ── Pending registrations ─────────────────────────────────────────
+        checks.AppendLine();
+        checks.AppendLine("--- Pending Registrations (EmailConfirmed=false, not seeded) ---");
+        try
+        {
+            var pending = await _db.Users
+                .Where(u => u.Id > 6 && !u.EmailConfirmed)
+                .Select(u => new { u.Id, u.Email, u.IsApproved, u.EmailConfirmed, u.ConfirmationToken, u.CreatedAt })
+                .ToListAsync(cancellationToken);
+            if (!pending.Any())
+                checks.AppendLine("  None");
+            foreach (var u in pending)
+                checks.AppendLine($"  [{u.Id}] {u.Email} — Token={(u.ConfirmationToken != null ? "SET" : "NULL")} CreatedAt={u.CreatedAt:yyyy-MM-dd HH:mm}");
+        }
+        catch (Exception ex)
+        {
+            checks.AppendLine($"  ERROR: {ex.Message}");
+        }
+
+        // ── Email settings ────────────────────────────────────────────────
+        checks.AppendLine();
+        checks.AppendLine("--- Email Settings ---");
+        try
+        {
+            var smtpHost  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpHost"];
+            var smtpPort  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpPort"];
+            var smtpUser  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpUser"];
+            var smtpPass  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpPass"];
+            checks.AppendLine($"  SmtpHost: {smtpHost ?? "(not set)"}");
+            checks.AppendLine($"  SmtpPort: {smtpPort ?? "(not set)"}");
+            checks.AppendLine($"  SmtpUser: {smtpUser ?? "(not set)"}");
+            checks.AppendLine($"  SmtpPass: {(string.IsNullOrWhiteSpace(smtpPass) ? "(EMPTY — email will fail)" : "SET (" + smtpPass.Length + " chars)")}");
+        }
+        catch (Exception ex)
+        {
+            checks.AppendLine($"  ERROR: {ex.Message}");
+        }
+
+        // ── Migration history ─────────────────────────────────────────────
+        checks.AppendLine();
+        checks.AppendLine("--- Applied Migrations ---");
+        try
+        {
+            var applied = await _db.Database.GetAppliedMigrationsAsync(cancellationToken);
+            foreach (var m in applied)
+                checks.AppendLine($"  {m}");
+        }
+        catch (Exception ex)
+        {
+            checks.AppendLine($"  ERROR: {ex.Message}");
+        }
+
+        return Content(checks.ToString(), "text/plain");
+    }
+
+    // ── Apply migration manually (no auth — one-time use) ─────────────────────
+    [HttpGet]
+    public async Task<IActionResult> ApplyMigration(CancellationToken cancellationToken = default)
+    {
+        var log = new System.Text.StringBuilder();
+        log.AppendLine("=== ApplyMigration ===");
+        log.AppendLine($"Time (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+        log.AppendLine();
+
+        var sqls = new[]
+        {
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='IsApproved') ALTER TABLE [Users] ADD [IsApproved] bit NOT NULL DEFAULT 0",
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='ApprovedAt') ALTER TABLE [Users] ADD [ApprovedAt] datetime2 NULL",
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='ApprovedById') ALTER TABLE [Users] ADD [ApprovedById] nvarchar(max) NULL",
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='EmailConfirmed') ALTER TABLE [Users] ADD [EmailConfirmed] bit NOT NULL DEFAULT 0",
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='PendingRole') ALTER TABLE [Users] ADD [PendingRole] nvarchar(max) NULL",
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='PendingDepartmentId') ALTER TABLE [Users] ADD [PendingDepartmentId] nvarchar(max) NULL",
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='ConfirmationToken') ALTER TABLE [Users] ADD [ConfirmationToken] nvarchar(max) NULL",
+            "UPDATE [Users] SET [IsApproved]=1,[EmailConfirmed]=1 WHERE [Id] IN (1,2,3,4,5,6,7)",
+            "IF NOT EXISTS (SELECT 1 FROM [__EFMigrationsHistory] WHERE [MigrationId]='20260506000001_AddApprovalFields') INSERT INTO [__EFMigrationsHistory]([MigrationId],[ProductVersion]) VALUES('20260506000001_AddApprovalFields','8.0.11')"
+        };
+
+        var conn = _db.Database.GetDbConnection();
+        try
+        {
+            if (conn.State != System.Data.ConnectionState.Open)
+                await conn.OpenAsync(cancellationToken);
+
+            foreach (var sql in sqls)
+            {
+                try
+                {
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = sql;
+                    cmd.CommandTimeout = 30;
+                    await cmd.ExecuteNonQueryAsync(cancellationToken);
+                    log.AppendLine($"OK: {sql[..Math.Min(80, sql.Length)]}");
+                }
+                catch (Exception ex)
+                {
+                    log.AppendLine($"ERR: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            log.AppendLine($"Connection failed: {ex.Message}");
+        }
+
+        log.AppendLine();
+        log.AppendLine("Done. Refresh /Home/Diagnostics to verify columns exist.");
+        return Content(log.ToString(), "text/plain");
+    }
+
+    // ── Routes explorer (no auth — accessible at /Home/Routes) ───────────────
+    [HttpGet]
+    public IActionResult Routes()
+    {
+        var routes = new[]
+        {
+            // ── Public / Auth ──────────────────────────────────────────────
+            new { Method = "GET",  Path = "/",                              Controller = "Landing",  Action = "Index",                  Auth = "Public",     Description = "Landing page" },
+            new { Method = "GET",  Path = "/Home/Login",                    Controller = "Home",     Action = "Login",                  Auth = "Public",     Description = "Login page" },
+            new { Method = "POST", Path = "/Home/Login",                    Controller = "Home",     Action = "Login",                  Auth = "Public",     Description = "Authenticate user" },
+            new { Method = "POST", Path = "/Home/Logout",                   Controller = "Home",     Action = "Logout",                 Auth = "Authenticated", Description = "Sign out" },
+            // ── Registration ──────────────────────────────────────────────
+            new { Method = "GET",  Path = "/Account/Register",              Controller = "Account",  Action = "Register",               Auth = "Public",     Description = "Registration form" },
+            new { Method = "POST", Path = "/Account/Register",              Controller = "Account",  Action = "Register",               Auth = "Public",     Description = "Submit registration" },
+            new { Method = "GET",  Path = "/Account/ConfirmEmail",          Controller = "Account",  Action = "ConfirmEmail",           Auth = "Public",     Description = "Verify email token" },
+            new { Method = "GET",  Path = "/Account/RegisterConfirmation",  Controller = "Account",  Action = "RegisterConfirmation",   Auth = "Public",     Description = "Registration submitted page" },
+            // ── Dashboard ─────────────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/Dashboard",                Controller = "Home",     Action = "Dashboard",              Auth = "Authenticated", Description = "Role-based dashboard" },
+            // ── KPI Tracking ──────────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/KPITracking",              Controller = "Home",     Action = "KPITracking",            Auth = "All roles",  Description = "KPI tracking list" },
+            new { Method = "GET",  Path = "/Home/KPILogEntry",              Controller = "Home",     Action = "KPILogEntry",            Auth = "Super Admin, Manager, Staff", Description = "KPI log entry form" },
+            new { Method = "POST", Path = "/Home/KPILogEntry",              Controller = "Home",     Action = "KPILogEntry",            Auth = "Super Admin, Manager, Staff", Description = "Submit KPI log entry" },
+            new { Method = "GET",  Path = "/Home/KpiDetail/{id}",           Controller = "Home",     Action = "KpiDetail",              Auth = "Authenticated", Description = "KPI detail JSON" },
+            new { Method = "GET",  Path = "/Home/KpiCreate",                Controller = "Home",     Action = "KpiCreate",              Auth = "Super Admin, Administrator, Manager", Description = "Create KPI form" },
+            new { Method = "POST", Path = "/Home/KpiCreate",                Controller = "Home",     Action = "KpiCreate",              Auth = "Super Admin, Administrator, Manager", Description = "Submit new KPI" },
+            new { Method = "GET",  Path = "/Home/KpiEdit/{id}",             Controller = "Home",     Action = "KpiEdit",                Auth = "Super Admin, Administrator, Manager", Description = "Edit KPI form" },
+            new { Method = "POST", Path = "/Home/KpiEdit",                  Controller = "Home",     Action = "KpiEdit",                Auth = "Super Admin, Administrator, Manager", Description = "Update KPI" },
+            new { Method = "POST", Path = "/Home/KpiToggleActive/{id}",     Controller = "Home",     Action = "KpiToggleActive",        Auth = "Super Admin, Administrator, Manager", Description = "Archive/restore KPI" },
+            // ── Balanced Scorecard ────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/BalancedScorecard",        Controller = "Home",     Action = "BalancedScorecard",      Auth = "Super Admin, Manager, Staff, Executive", Description = "Balanced scorecard view" },
+            // ── Performance Analytics ─────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/PerformanceAnalytics",     Controller = "Home",     Action = "PerformanceAnalytics",   Auth = "Super Admin, Manager, Executive", Description = "Performance analytics charts" },
+            // ── Strategic Planning ────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/StrategicPlanning",        Controller = "Home",     Action = "StrategicPlanning",      Auth = "Super Admin, Manager, Executive", Description = "Strategic goals list" },
+            new { Method = "GET",  Path = "/Home/StrategicGoalCreate",      Controller = "Home",     Action = "StrategicGoalCreate",    Auth = "Super Admin, Manager", Description = "Create strategic goal form" },
+            new { Method = "POST", Path = "/Home/StrategicGoalCreate",      Controller = "Home",     Action = "StrategicGoalCreate",    Auth = "Super Admin, Manager", Description = "Submit new strategic goal" },
+            new { Method = "GET",  Path = "/Home/StrategicGoalEdit/{id}",   Controller = "Home",     Action = "StrategicGoalEdit",      Auth = "Super Admin, Manager", Description = "Edit strategic goal form" },
+            new { Method = "POST", Path = "/Home/StrategicGoalEdit",        Controller = "Home",     Action = "StrategicGoalEdit",      Auth = "Super Admin, Manager", Description = "Update strategic goal" },
+            new { Method = "POST", Path = "/Home/StrategicGoalArchive/{id}",Controller = "Home",     Action = "StrategicGoalArchive",   Auth = "Super Admin, Manager", Description = "Archive/restore strategic goal" },
+            // ── Executive Reporting ───────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/ExecutiveReporting",       Controller = "Home",     Action = "ExecutiveReporting",     Auth = "Super Admin, Administrator, Manager, Executive", Description = "Executive reports" },
+            // ── Department Management ─────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/DepartmentManagement",     Controller = "Home",     Action = "DepartmentManagement",   Auth = "Super Admin, Administrator", Description = "Department list" },
+            new { Method = "GET",  Path = "/Home/DepartmentCreate",         Controller = "Home",     Action = "DepartmentCreate",       Auth = "Super Admin, Administrator", Description = "Create department form" },
+            new { Method = "POST", Path = "/Home/DepartmentCreate",         Controller = "Home",     Action = "DepartmentCreate",       Auth = "Super Admin, Administrator", Description = "Submit new department" },
+            new { Method = "GET",  Path = "/Home/DepartmentEdit/{id}",      Controller = "Home",     Action = "DepartmentEdit",         Auth = "Super Admin, Administrator", Description = "Edit department form" },
+            new { Method = "POST", Path = "/Home/DepartmentEdit",           Controller = "Home",     Action = "DepartmentEdit",         Auth = "Super Admin, Administrator", Description = "Update department" },
+            new { Method = "POST", Path = "/Home/DepartmentDelete/{id}",    Controller = "Home",     Action = "DepartmentDelete",       Auth = "Super Admin, Administrator", Description = "Delete department" },
+            new { Method = "POST", Path = "/Home/DepartmentArchive/{id}",   Controller = "Home",     Action = "DepartmentArchive",      Auth = "Super Admin, Administrator", Description = "Archive/restore department" },
+            // ── User Management ───────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/UserManagement",           Controller = "Home",     Action = "UserManagement",         Auth = "Super Admin, Administrator", Description = "User list" },
+            new { Method = "GET",  Path = "/Home/UserCreate",               Controller = "Home",     Action = "UserCreate",             Auth = "Super Admin, Administrator", Description = "Create user form" },
+            new { Method = "POST", Path = "/Home/UserCreate",               Controller = "Home",     Action = "UserCreate",             Auth = "Super Admin, Administrator", Description = "Submit new user" },
+            new { Method = "GET",  Path = "/Home/UserEdit/{id}",            Controller = "Home",     Action = "UserEdit",               Auth = "Super Admin, Administrator", Description = "Edit user form" },
+            new { Method = "POST", Path = "/Home/UserEdit",                 Controller = "Home",     Action = "UserEdit",               Auth = "Super Admin, Administrator", Description = "Update user" },
+            new { Method = "POST", Path = "/Home/UserToggleActive/{id}",    Controller = "Home",     Action = "UserToggleActive",       Auth = "Super Admin, Administrator", Description = "Activate/deactivate user" },
+            // ── Pending Approvals ─────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/PendingUsers",             Controller = "Home",     Action = "PendingUsers",           Auth = "Super Admin, Administrator", Description = "Pending user approvals list" },
+            new { Method = "POST", Path = "/Home/ApproveUser/{id}",         Controller = "Home",     Action = "ApproveUser",            Auth = "Super Admin, Administrator", Description = "Approve a pending user" },
+            new { Method = "POST", Path = "/Home/RejectUser/{id}",          Controller = "Home",     Action = "RejectUser",             Auth = "Super Admin, Administrator", Description = "Reject and delete a pending user" },
+            // ── Notifications ─────────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/Notifications",            Controller = "Home",     Action = "Notifications",          Auth = "Authenticated", Description = "Notifications page" },
+            new { Method = "POST", Path = "/Home/MarkNotificationsRead",    Controller = "Home",     Action = "MarkNotificationsRead",  Auth = "Authenticated", Description = "Mark notifications as read" },
+            // ── System Logs ───────────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/SystemLogs",               Controller = "Home",     Action = "SystemLogs",             Auth = "Super Admin, Administrator", Description = "Audit log viewer" },
+            // ── Profile ───────────────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/Profile",                  Controller = "Home",     Action = "Profile",                Auth = "Authenticated", Description = "User profile page" },
+            new { Method = "POST", Path = "/Home/Profile",                  Controller = "Home",     Action = "Profile",                Auth = "Authenticated", Description = "Update profile" },
+            // ── Routes ────────────────────────────────────────────────────
+            new { Method = "GET",  Path = "/Home/Routes",                   Controller = "Home",     Action = "Routes",                 Auth = "Public",     Description = "This page — all app routes" },
+        };
+
+        return View(routes);
     }
 
     public async Task<IActionResult> DepartmentManagement(

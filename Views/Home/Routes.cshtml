@@ -1,0 +1,120 @@
+@model IEnumerable<dynamic>
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PeakMetrics — Route Explorer</title>
+    <link rel="icon" type="image/png" href="~/images/peakmetrics-logo.png" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous" />
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
+        .badge-get    { background: #dcfce7; color: #15803d; }
+        .badge-post   { background: #fef9c3; color: #854d0e; }
+        .badge-public { background: #eff6ff; color: #1d4ed8; }
+        .badge-auth   { background: #f3e8ff; color: #7e22ce; }
+        .badge-role   { background: #fff7ed; color: #c2410c; }
+        .method-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; font-family: monospace; }
+        .path-cell    { font-family: monospace; font-size: 0.88rem; color: #0f172a; }
+        .filter-bar   { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .filter-bar input, .filter-bar select { border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 12px; font-size: 0.88rem; outline: none; }
+        .filter-bar input:focus, .filter-bar select:focus { border-color: #2563eb; }
+        h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.25rem; }
+        .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; }
+        table { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        thead th { background: #f1f5f9; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 1px solid #e2e8f0; padding: 10px 14px; }
+        tbody td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; font-size: 0.88rem; }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: #f8fafc; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div style="max-width:1200px;margin:0 auto;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.5rem;">
+            <img src="~/images/peakmetrics-logo.png" style="height:36px;" alt="PeakMetrics" />
+            <h1>Route Explorer</h1>
+        </div>
+        <p class="subtitle">All HTTP routes registered in PeakMetrics — @Model.Count() endpoints</p>
+
+        <div class="filter-bar">
+            <input type="text" id="searchInput" placeholder="Search path or description..." style="flex:1;min-width:200px;" />
+            <select id="methodFilter">
+                <option value="">All Methods</option>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+            </select>
+            <select id="authFilter">
+                <option value="">All Auth</option>
+                <option value="Public">Public</option>
+                <option value="Authenticated">Authenticated</option>
+                <option value="Admin">Admin only</option>
+            </select>
+        </div>
+
+        <table class="table mb-0" id="routeTable">
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th>Path</th>
+                    <th>Controller</th>
+                    <th>Action</th>
+                    <th>Auth</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    var methodClass = r.Method == "GET" ? "badge-get" : "badge-post";
+                    var authClass   = r.Auth == "Public" ? "badge-public"
+                                    : r.Auth == "Authenticated" ? "badge-auth"
+                                    : "badge-role";
+                    <tr data-method="@r.Method" data-auth="@r.Auth" data-search="@r.Path @r.Description @r.Controller @r.Action">
+                        <td><span class="method-badge @methodClass">@r.Method</span></td>
+                        <td class="path-cell">@r.Path</td>
+                        <td><span style="color:#64748b;">@r.Controller</span></td>
+                        <td>@r.Action</td>
+                        <td><span class="method-badge @authClass" style="font-family:inherit;font-size:0.75rem;">@r.Auth</span></td>
+                        <td style="color:#475569;">@r.Description</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <p style="margin-top:1rem;font-size:0.8rem;color:#94a3b8;">
+            PeakMetrics &copy; @DateTime.Now.Year &nbsp;·&nbsp;
+            <a href="/Home/Login" style="color:#2563eb;">Back to Login</a>
+        </p>
+    </div>
+
+    <script>
+    (function () {
+        var search = document.getElementById('searchInput');
+        var method = document.getElementById('methodFilter');
+        var auth   = document.getElementById('authFilter');
+        var rows   = document.querySelectorAll('#routeTable tbody tr');
+
+        function filter() {
+            var s = search.value.toLowerCase();
+            var m = method.value;
+            var a = auth.value;
+            rows.forEach(function (row) {
+                var matchSearch = !s || row.dataset.search.toLowerCase().includes(s);
+                var matchMethod = !m || row.dataset.method === m;
+                var matchAuth   = !a || (a === 'Admin' ? row.dataset.auth.includes('Admin') || row.dataset.auth.includes('Super') : row.dataset.auth === a);
+                row.classList.toggle('hidden', !(matchSearch && matchMethod && matchAuth));
+            });
+        }
+
+        search.addEventListener('input', filter);
+        method.addEventListener('change', filter);
+        auth.addEventListener('change', filter);
+    })();
+    </script>
+</body>
+</html>

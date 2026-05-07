@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.EntityFrameworkCore;
 using PeakMetrics.Web.Data;
+using PeakMetrics.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,17 +15,27 @@ builder.Services.AddAntiforgery(options =>
 });
 
 // ── Database ──────────────────────────────────────────────────────────────────
+// Use LocalConnection for local development, DefaultConnection for production.
+var isProduction = !builder.Environment.IsDevelopment();
+var connectionString =
+    Environment.GetEnvironmentVariable("PEAKMETRICS_CONNECTION_STRING")
+    ?? (isProduction
+        ? builder.Configuration.GetConnectionString("DefaultConnection")
+        : builder.Configuration.GetConnectionString("LocalConnection")
+          ?? builder.Configuration.GetConnectionString("DefaultConnection"))
+    ?? throw new InvalidOperationException(
+        "No connection string found. Set the PEAKMETRICS_CONNECTION_STRING environment variable.");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
-        // Connection string is supplied via the PEAKMETRICS_CONNECTION_STRING environment
-        // variable on the host (or appsettings.Development.json for local dev).
-        // It must never be hard-coded in source files.
-        Environment.GetEnvironmentVariable("PEAKMETRICS_CONNECTION_STRING")
-            ?? builder.Configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException(
-                "No connection string found. Set the PEAKMETRICS_CONNECTION_STRING environment variable."),
+        connectionString,
         sql => sql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorNumbersToAdd: null)
     ));
+
+// ── Email ─────────────────────────────────────────────────────────────────────
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // ── Session ───────────────────────────────────────────────────────────────────
 builder.Services.AddSession(options =>
@@ -86,5 +97,7 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Landing}/{action=Index}/{id?}");
+
+app.MapControllers(); // enables [ApiController] attribute routing for ApiController
 
 app.Run();

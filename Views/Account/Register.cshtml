@@ -1,14 +1,15 @@
-@model PeakMetrics.Web.ViewModels.LoginViewModel
+@model PeakMetrics.Web.ViewModels.RegisterViewModel
 @{
     Layout = null;
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "Register";
+    var departments = ViewBag.Departments as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login - PeakMetrics</title>
+    <title>Register - PeakMetrics</title>
     <link rel="icon" type="image/png" href="~/images/peakmetrics-logo.png" />
     <link rel="shortcut icon" href="~/images/peakmetrics-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -31,7 +32,6 @@
 
         .pm-card {
             width: min(1080px, 100%);
-            height: 620px;
             display: flex;
             border-radius: 18px;
             overflow: hidden;
@@ -41,7 +41,7 @@
 
         /* ── Left panel ── */
         .pm-left {
-            width: 55%;
+            width: 45%;
             position: relative;
             overflow: hidden;
             color: #fff;
@@ -106,23 +106,23 @@
 
         /* ── Right panel ── */
         .pm-right {
-            width: 45%;
+            width: 55%;
             background: #fff;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 32px 56px;
+            padding: 40px 56px;
         }
 
         .pm-right-inner { width: 100%; }
 
         .pm-logo-wrap {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .pm-logo-img {
-            height: 140px;
+            height: 100px;
             width: auto;
             display: block;
             margin: 0 auto;
@@ -130,20 +130,20 @@
         }
 
         .pm-form-title {
-            margin: 0 0 6px;
-            font-size: 1.9rem;
+            margin: 0 0 4px;
+            font-size: 1.7rem;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: -0.02em;
         }
 
         .pm-form-sub {
-            margin: 0 0 20px;
+            margin: 0 0 16px;
             font-size: 0.9rem;
             color: #64748b;
         }
 
-        .pm-field { margin-bottom: 18px; }
+        .pm-field { margin-bottom: 14px; }
 
         .pm-field label {
             display: block;
@@ -153,7 +153,8 @@
             color: #1e293b;
         }
 
-        .pm-field input {
+        .pm-field input,
+        .pm-field select {
             width: 100%;
             border: none;
             border-bottom: 2px solid #cbd5e1;
@@ -164,11 +165,16 @@
             color: #0f172a;
             outline: none;
             transition: border-color 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
         }
 
-        .pm-field input:focus { border-bottom-color: #2563eb; }
+        .pm-field input:focus,
+        .pm-field select:focus { border-bottom-color: #2563eb; }
+
         .pm-field input::placeholder { color: #94a3b8; }
-        .pm-field input.is-invalid { border-bottom-color: #ef4444; }
+        .pm-field input.is-invalid,
+        .pm-field select.is-invalid { border-bottom-color: #ef4444; }
 
         .pm-error {
             margin-top: 4px;
@@ -183,8 +189,10 @@
             border: 1px solid #fecaca;
             color: #b91c1c;
             font-size: 0.88rem;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
+
+        .pm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
 
         .pm-btn {
             width: 100%;
@@ -209,7 +217,6 @@
             box-shadow: 0 12px 24px rgba(37, 99, 235, 0.38);
         }
 
-        /* Shake animation for error */
         @@keyframes pm-shake {
             0%, 100% { transform: translateX(0); }
             20%       { transform: translateX(-6px); }
@@ -220,34 +227,13 @@
 
         .pm-shake { animation: pm-shake 0.4s ease; }
 
-        .pm-hint {
-            margin-top: 16px;
-            padding: 12px 14px;
-            background: #f0f7ff;
-            border-radius: 8px;
-            border: 1px solid #bfdbfe;
-        }
-
-        .pm-hint p {
-            margin: 0 0 4px;
-            font-size: 0.78rem;
-            color: #1e40af;
-            font-weight: 600;
-        }
-
-        .pm-hint p:last-child { margin-bottom: 0; }
-
-        .pm-hint span {
-            font-weight: 400;
-            color: #3b82f6;
-        }
-
         @@media (max-width: 900px) {
             body { padding: 0; }
             .pm-card { flex-direction: column; height: auto; min-height: 100vh; border-radius: 0; box-shadow: none; }
             .pm-left, .pm-right { width: 100%; }
-            .pm-left { padding: 36px 28px; min-height: 280px; }
+            .pm-left { padding: 36px 28px; min-height: 220px; }
             .pm-right { padding: 28px 24px 36px; align-items: flex-start; }
+            .pm-row { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -256,8 +242,8 @@
         <section class="pm-left">
             <div class="pm-left-content">
                 <p class="pm-kicker">Analytics &amp; Insights Platform</p>
-                <h1 class="pm-headline">Hello,<br>PeakMetrics<br>Team</h1>
-                <p class="pm-copy">Monitor performance, automate reporting, and keep every KPI aligned to strategy.</p>
+                <h1 class="pm-headline">Join<br>PeakMetrics</h1>
+                <p class="pm-copy">Submit your request to join your organization's performance management system.</p>
             </div>
             <p class="pm-left-foot">PeakMetrics &copy; @DateTime.Now.Year</p>
         </section>
@@ -268,95 +254,102 @@
                     <img src="~/images/peakmetrics-logo.png" alt="PeakMetrics" class="pm-logo-img" />
                 </div>
 
-                <h2 class="pm-form-title">Welcome Back</h2>
-                <p class="pm-form-sub">Sign in to continue to your dashboard.</p>
+                <h2 class="pm-form-title">Create Account</h2>
+                <p class="pm-form-sub">Request access to PeakMetrics.</p>
 
                 @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ContainsKey(string.Empty))
                 {
-                    <div class="pm-alert pm-shake" id="loginError">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <div class="pm-alert pm-shake">
                         @Html.ValidationMessage(string.Empty)
                     </div>
                 }
 
-                <form asp-controller="Home" asp-action="Login" method="post" id="loginForm" novalidate>
+                <form asp-controller="Account" asp-action="Register" method="post" id="registerForm">
                     @Html.AntiForgeryToken()
 
                     <div class="pm-field">
-                        <label asp-for="Email">Email Address</label>
-                        <input asp-for="Email" type="email" placeholder="you@peakmetrics.com"
-                               id="loginEmail"
-                               class="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "is-invalid" : "")" />
-                        <div class="pm-error" id="emailError">@Html.ValidationMessageFor(m => m.Email)</div>
+                        <label asp-for="FullName">Full Name</label>
+                        <input asp-for="FullName" type="text" placeholder="Your full name" id="regFullName"
+                               class="@(ViewData.ModelState["FullName"]?.Errors.Count > 0 ? "is-invalid" : "")" />
+                        <div class="pm-error">@Html.ValidationMessageFor(m => m.FullName)</div>
                     </div>
 
                     <div class="pm-field">
-                        <label asp-for="Password">Password</label>
-                        <input asp-for="Password" type="password" placeholder="Enter your password"
-                               id="loginPassword"
-                               class="@(ViewData.ModelState["Password"]?.Errors.Count > 0 ? "is-invalid" : "")" />
-                        <div class="pm-error" id="passwordError">@Html.ValidationMessageFor(m => m.Password)</div>
+                        <label asp-for="Email">Email Address</label>
+                        <input asp-for="Email" type="email" placeholder="you@company.com" id="regEmail"
+                               class="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "is-invalid" : "")" />
+                        <div class="pm-error">@Html.ValidationMessageFor(m => m.Email)</div>
                     </div>
 
-                    <button type="submit" class="pm-btn pm-btn-primary" id="loginBtn">Sign In</button>
+                    <div class="pm-row">
+                        <div class="pm-field">
+                            <label asp-for="Password">Password</label>
+                            <input asp-for="Password" type="password" placeholder="Min. 8 characters" id="regPassword"
+                                   class="@(ViewData.ModelState["Password"]?.Errors.Count > 0 ? "is-invalid" : "")" />
+                            <div class="pm-error">@Html.ValidationMessageFor(m => m.Password)</div>
+                        </div>
+                        <div class="pm-field">
+                            <label asp-for="ConfirmPassword">Confirm Password</label>
+                            <input asp-for="ConfirmPassword" type="password" placeholder="Repeat password" id="regConfirmPassword"
+                                   class="@(ViewData.ModelState["ConfirmPassword"]?.Errors.Count > 0 ? "is-invalid" : "")" />
+                            <div class="pm-error">@Html.ValidationMessageFor(m => m.ConfirmPassword)</div>
+                        </div>
+                    </div>
+
+                    <div class="pm-row">
+                        <div class="pm-field">
+                            <label asp-for="DepartmentId">Department</label>
+                            <select asp-for="DepartmentId" id="regDepartment">
+                                <option value="">— Select department —</option>
+                                @foreach (var dept in departments)
+                                {
+                                    if (Model.DepartmentId == (int?)dept.Id)
+                                    {
+                                        <option value="@dept.Id" selected>@dept.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@dept.Id">@dept.Name</option>
+                                    }
+                                }
+                            </select>
+                            <div class="pm-error">@Html.ValidationMessageFor(m => m.DepartmentId)</div>
+                        </div>
+                        <div class="pm-field">
+                            <label asp-for="PendingRole">Requested Role</label>
+                            <select asp-for="PendingRole" id="regRole">
+                                <option value="Staff">Staff</option>
+                                <option value="Manager">Manager</option>
+                            </select>
+                            <div class="pm-error">@Html.ValidationMessageFor(m => m.PendingRole)</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="pm-btn pm-btn-primary" id="registerBtn">Create Account</button>
                 </form>
 
                 <p class="text-center mt-3" style="font-size:0.88rem; color:#64748b;">
-                    Don't have an account?
-                    <a href="/Account/Register" style="color:#2563eb; font-weight:600;">Register here</a>
+                    Already have an account?
+                    <a href="/Home/Login" style="color:#2563eb; font-weight:600;">Login instead</a>
                 </p>
 
                 <script>
                 (function () {
-                    var form     = document.getElementById('loginForm');
-                    var email    = document.getElementById('loginEmail');
-                    var password = document.getElementById('loginPassword');
-                    var emailErr = document.getElementById('emailError');
-                    var passErr  = document.getElementById('passwordError');
-                    var btn      = document.getElementById('loginBtn');
+                    var form        = document.getElementById('registerForm');
+                    var btn         = document.getElementById('registerBtn');
 
-                    function validateEmail(val) {
-                        if (!val) return 'Email is required.';
-                        var re = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
-                        if (!re.test(val)) return 'Enter a valid email address.';
-                        return '';
-                    }
+                    // Re-enable button if page reloaded with server errors
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account';
 
-                    function validatePassword(val) {
-                        if (!val) return 'Password is required.';
-                        return '';
-                    }
-
-                    function setError(input, errEl, msg) {
-                        errEl.textContent = msg;
-                        if (msg) {
-                            input.classList.add('is-invalid');
-                        } else {
-                            input.classList.remove('is-invalid');
-                        }
-                    }
-
-                    email.addEventListener('input', function () {
-                        setError(email, emailErr, validateEmail(email.value.trim()));
-                    });
-
-                    password.addEventListener('input', function () {
-                        setError(password, passErr, validatePassword(password.value));
-                    });
-
-                    form.addEventListener('submit', function (e) {
-                        var eErr = validateEmail(email.value.trim());
-                        var pErr = validatePassword(password.value);
-                        setError(email, emailErr, eErr);
-                        setError(password, passErr, pErr);
-                        if (eErr || pErr) {
-                            e.preventDefault();
-                            form.classList.add('pm-shake');
-                            setTimeout(function () { form.classList.remove('pm-shake'); }, 500);
-                        } else {
-                            btn.disabled = true;
-                            btn.textContent = 'Signing in...';
-                        }
+                    form.addEventListener('submit', function () {
+                        btn.disabled = true;
+                        btn.textContent = 'Submitting...';
+                        // Re-enable after 5s in case of server error returning the view
+                        setTimeout(function () {
+                            btn.disabled = false;
+                            btn.textContent = 'Create Account';
+                        }, 5000);
                     });
                 })();
                 </script>

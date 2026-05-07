@@ -214,69 +214,81 @@ public sealed class AppDbContext : DbContext
         modelBuilder.Entity<AppUser>().HasData(
             new AppUser
             {
-                Id           = 1,
-                FullName     = "System Admin",
-                Email        = "admin@peakmetrics.com",
-                PasswordHash = h1,
-                Role         = "Super Admin",
-                DepartmentId = null,
-                CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                IsActive     = true
+                Id             = 1,
+                FullName       = "System Admin",
+                Email          = "admin@peakmetrics.com",
+                PasswordHash   = h1,
+                Role           = "Super Admin",
+                DepartmentId   = null,
+                CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive       = true,
+                IsApproved     = false,
+                EmailConfirmed = false
             },
             new AppUser
             {
-                Id           = 2,
-                FullName     = "Maria Santos",
-                Email        = "manager@peakmetrics.com",
-                PasswordHash = h2,
-                Role         = "Manager",
-                DepartmentId = 1,
-                CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                IsActive     = true
+                Id             = 2,
+                FullName       = "Maria Santos",
+                Email          = "manager@peakmetrics.com",
+                PasswordHash   = h2,
+                Role           = "Manager",
+                DepartmentId   = 1,
+                CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive       = true,
+                IsApproved     = false,
+                EmailConfirmed = false
             },
             new AppUser
             {
-                Id           = 3,
-                FullName     = "Sarah Johnson",
-                Email        = "sarah@peakmetrics.com",
-                PasswordHash = h3,
-                Role         = "Staff",
-                DepartmentId = 3,
-                CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                IsActive     = true
+                Id             = 3,
+                FullName       = "Sarah Johnson",
+                Email          = "sarah@peakmetrics.com",
+                PasswordHash   = h3,
+                Role           = "Staff",
+                DepartmentId   = 3,
+                CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive       = true,
+                IsApproved     = false,
+                EmailConfirmed = false
             },
             new AppUser
             {
-                Id           = 4,
-                FullName     = "Michael Chen",
-                Email        = "michael@peakmetrics.com",
-                PasswordHash = h3,
-                Role         = "Staff",
-                DepartmentId = 4,
-                CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                IsActive     = true
+                Id             = 4,
+                FullName       = "Michael Chen",
+                Email          = "michael@peakmetrics.com",
+                PasswordHash   = h3,
+                Role           = "Staff",
+                DepartmentId   = 4,
+                CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive       = true,
+                IsApproved     = false,
+                EmailConfirmed = false
             },
             new AppUser
             {
-                Id           = 5,
-                FullName     = "Emily Davis",
-                Email        = "emily@peakmetrics.com",
-                PasswordHash = h3,
-                Role         = "Staff",
-                DepartmentId = 2,
-                CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                IsActive     = true
+                Id             = 5,
+                FullName       = "Emily Davis",
+                Email          = "emily@peakmetrics.com",
+                PasswordHash   = h3,
+                Role           = "Staff",
+                DepartmentId   = 2,
+                CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive       = true,
+                IsApproved     = false,
+                EmailConfirmed = false
             },
             new AppUser
             {
-                Id           = 6,
-                FullName     = "Executive User",
-                Email        = "executive@peakmetrics.com",
-                PasswordHash = h4,
-                Role         = "Executive",
-                DepartmentId = null,
-                CreatedAt    = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                IsActive     = true
+                Id             = 6,
+                FullName       = "Executive User",
+                Email          = "executive@peakmetrics.com",
+                PasswordHash   = h4,
+                Role           = "Executive",
+                DepartmentId   = null,
+                CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive       = true,
+                IsApproved     = false,
+                EmailConfirmed = false
             }
         );
 

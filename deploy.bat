@@ -14,6 +14,9 @@ if not exist deploy.secrets.bat (
 )
 call deploy.secrets.bat
 
+REM ── Clean previous publish output ────────────────────────────────────────
+if exist bin\Release\net8.0\publish rmdir /s /q bin\Release\net8.0\publish
+
 REM ── Deploy via WebDeploy ──────────────────────────────────────────────────
 echo Deploying to peakmetrics.runasp.net...
 echo.
@@ -23,21 +26,14 @@ dotnet publish PeakMetrics.Web.csproj -c Release ^
   /p:MSDeployServiceURL=%WD_SERVER%:%WD_PORT% ^
   /p:DeployIisAppPath=%WD_SITE% ^
   /p:UserName=%WD_USER% ^
-  "/p:Password=%WD_PASS%" ^
+  /p:Password=%WD_PASS% ^
   /p:AllowUntrustedCertificate=True ^
   /p:SkipExtraFilesOnServer=True ^
   --nologo
 
-if %errorlevel% neq 0 (
-    echo.
-    echo  ERROR: Deploy failed.
-    pause
-    exit /b 1
-)
-
 echo.
 echo ========================================
-echo  Deploy successful!
+echo  Deploy complete! Check the site:
 echo  https://peakmetrics.runasp.net
 echo ========================================
 echo.

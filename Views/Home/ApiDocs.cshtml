@@ -1,0 +1,311 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PeakMetrics API Documentation</title>
+    <link rel="icon" type="image/png" href="/images/peakmetrics-logo.png" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        body { font-family: "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; }
+        .api-header { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 3rem 2rem 2rem; border-bottom: 1px solid #1e293b; }
+        .api-header h1 { font-size: 2rem; font-weight: 800; color: #f8fafc; margin-bottom: 0.5rem; }
+        .api-header p { color: #94a3b8; margin: 0; }
+        .base-url { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px 16px; font-family: monospace; font-size: 0.9rem; color: #7dd3fc; display: inline-block; margin-top: 1rem; }
+        .container-docs { max-width: 960px; margin: 0 auto; padding: 2rem; }
+        .section-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #64748b; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #1e293b; }
+        .endpoint-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; margin-bottom: 1rem; overflow: hidden; transition: border-color 0.2s; }
+        .endpoint-card:hover { border-color: #475569; }
+        .endpoint-header { display: flex; align-items: center; gap: 14px; padding: 16px 20px; cursor: pointer; }
+        .method-badge { font-size: 0.72rem; font-weight: 800; padding: 4px 10px; border-radius: 6px; font-family: monospace; min-width: 52px; text-align: center; flex-shrink: 0; }
+        .get  { background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+        .post { background: #451a03; color: #fcd34d; border: 1px solid #78350f; }
+        .endpoint-path { font-family: monospace; font-size: 0.95rem; color: #f1f5f9; font-weight: 600; }
+        .endpoint-desc { color: #94a3b8; font-size: 0.85rem; margin-left: auto; }
+        .auth-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
+        .auth-public { background: #1e3a5f; color: #7dd3fc; border: 1px solid #1d4ed8; }
+        .auth-required { background: #3b1f5e; color: #c4b5fd; border: 1px solid #7c3aed; }
+        .endpoint-body { padding: 0 20px 20px; display: none; }
+        .endpoint-body.open { display: block; }
+        .response-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 0.8rem; color: #86efac; overflow-x: auto; white-space: pre; margin-top: 12px; }
+        .try-btn { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.82rem; font-weight: 600; text-decoration: none; cursor: pointer; margin-top: 12px; transition: background 0.2s; }
+        .try-btn:hover { background: #1d4ed8; color: #fff; }
+        .param-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.82rem; }
+        .param-table th { text-align: left; color: #64748b; font-weight: 600; padding: 6px 10px; border-bottom: 1px solid #334155; }
+        .param-table td { padding: 6px 10px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+        .param-table td:first-child { font-family: monospace; color: #7dd3fc; }
+        .divider { height: 1px; background: #1e293b; margin: 12px 0; }
+        .chevron { margin-left: auto; color: #64748b; transition: transform 0.2s; }
+        .chevron.open { transform: rotate(180deg); }
+        .tag { font-size: 0.7rem; background: #0f172a; color: #64748b; border: 1px solid #334155; border-radius: 4px; padding: 1px 6px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="api-header">
+        <div style="max-width:960px;margin:0 auto;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:1rem;">
+                <img src="/images/peakmetrics-logo.png" style="height:40px;filter:brightness(0) invert(1);" alt="PeakMetrics" />
+                <div>
+                    <h1>PeakMetrics API</h1>
+                    <p>REST API for KPIs, Departments, Strategic Goals, and Users</p>
+                </div>
+            </div>
+            <div class="base-url"><i class="bi bi-globe me-2"></i>Base URL: <strong>https://peakmetrics.runasp.net/api</strong></div>
+            <div style="margin-top:1rem;display:flex;gap:10px;flex-wrap:wrap;">
+                <span style="font-size:0.78rem;color:#64748b;"><span style="color:#6ee7b7;">●</span> GET — Public (no auth needed)</span>
+                <span style="font-size:0.78rem;color:#64748b;"><span style="color:#c4b5fd;">●</span> GET — Requires login session</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-docs">
+
+        <div class="section-title">Health</div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-path">/api/health</span>
+                <span class="auth-badge auth-public">Public</span>
+                <span class="endpoint-desc">Server health check</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;">Returns the current server status, app version, and UTC timestamp. Use this to verify the API is reachable.</p>
+                <a href="/api/health" target="_blank" class="try-btn"><i class="bi bi-play-fill"></i> Try it</a>
+                <div class="response-box">{
+  "status": "healthy",
+  "app": "PeakMetrics",
+  "version": "1.0.0",
+  "timestamp": "2026-05-07T10:00:00Z",
+  "environment": "Production"
+}</div>
+            </div>
+        </div>
+
+        <div class="section-title">KPIs</div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-path">/api/kpis</span>
+                <span class="auth-badge auth-public">Public</span>
+                <span class="endpoint-desc">List all active KPIs</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;">Returns all active KPIs with their department, perspective, latest status, and most recent logged value.</p>
+                <a href="/api/kpis" target="_blank" class="try-btn"><i class="bi bi-play-fill"></i> Try it</a>
+                <div class="response-box">{
+  "count": 8,
+  "data": [
+    {
+      "id": 1,
+      "name": "Revenue Growth Rate",
+      "unit": "%",
+      "target": 15.0,
+      "frequency": "Monthly",
+      "department": "Finance",
+      "perspective": "Financial",
+      "latestStatus": "On Track",
+      "latestValue": 16.2,
+      "lastUpdated": "2026-04-30T08:00:00Z"
+    }
+  ]
+}</div>
+            </div>
+        </div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-path">/api/kpis/{id}</span>
+                <span class="auth-badge auth-public">Public</span>
+                <span class="endpoint-desc">Get a single KPI by ID</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;">Returns full details for a single KPI including its latest log entry.</p>
+                <table class="param-table">
+                    <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                    <tr><td>id</td><td>integer</td><td>KPI ID (path parameter)</td></tr>
+                </table>
+                <a href="/api/kpis/1" target="_blank" class="try-btn"><i class="bi bi-play-fill"></i> Try it (id=1)</a>
+                <div class="response-box">{
+  "id": 1,
+  "name": "Revenue Growth Rate",
+  "unit": "%",
+  "target": 15.0,
+  "frequency": "Monthly",
+  "description": null,
+  "department": "Finance",
+  "perspective": "Financial",
+  "createdAt": "2025-01-01T00:00:00Z",
+  "totalLogEntries": 12,
+  "latestEntry": {
+    "id": 45,
+    "actualValue": 16.2,
+    "status": "On Track",
+    "period": "April 2026",
+    "notes": null,
+    "loggedAt": "2026-04-30T08:00:00Z"
+  }
+}</div>
+            </div>
+        </div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-path">/api/kpis/{id}/logs</span>
+                <span class="auth-badge auth-required">Auth Required</span>
+                <span class="endpoint-desc">Get log history for a KPI</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;">Returns the full log history for a KPI. <strong style="color:#c4b5fd;">Requires an active login session.</strong></p>
+                <table class="param-table">
+                    <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+                    <tr><td>id</td><td>integer</td><td>KPI ID (path parameter)</td></tr>
+                </table>
+                <a href="/api/kpis/1/logs" target="_blank" class="try-btn"><i class="bi bi-play-fill"></i> Try it (id=1)</a>
+                <div class="response-box">{
+  "kpiId": 1,
+  "kpiName": "Revenue Growth Rate",
+  "count": 12,
+  "data": [
+    {
+      "id": 45,
+      "actualValue": 16.2,
+      "status": "On Track",
+      "period": "April 2026",
+      "notes": null,
+      "loggedAt": "2026-04-30T08:00:00Z",
+      "loggedBy": "Maria Santos"
+    }
+  ]
+}</div>
+            </div>
+        </div>
+
+        <div class="section-title">Departments</div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-path">/api/departments</span>
+                <span class="auth-badge auth-public">Public</span>
+                <span class="endpoint-desc">List all departments</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;">Returns all active departments with their user count and KPI count.</p>
+                <a href="/api/departments" target="_blank" class="try-btn"><i class="bi bi-play-fill"></i> Try it</a>
+                <div class="response-box">{
+  "count": 6,
+  "data": [
+    {
+      "id": 1,
+      "name": "Finance",
+      "description": "Financial planning and reporting",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "userCount": 3,
+      "kpiCount": 2
+    }
+  ]
+}</div>
+            </div>
+        </div>
+
+        <div class="section-title">Strategic Goals</div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-path">/api/strategic-goals</span>
+                <span class="auth-badge auth-public">Public</span>
+                <span class="endpoint-desc">List all strategic goals</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;">Returns all active (non-archived) strategic goals with their perspective and owner.</p>
+                <a href="/api/strategic-goals" target="_blank" class="try-btn"><i class="bi bi-play-fill"></i> Try it</a>
+                <div class="response-box">{
+  "count": 4,
+  "data": [
+    {
+      "id": 1,
+      "title": "Increase Revenue by 20%",
+      "description": null,
+      "status": "In Progress",
+      "targetYear": 2026,
+      "perspective": "Financial",
+      "owner": "Maria Santos",
+      "createdAt": "2025-01-01T00:00:00Z"
+    }
+  ]
+}</div>
+            </div>
+        </div>
+
+        <div class="section-title">Users</div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge get">GET</span>
+                <span class="endpoint-path">/api/users</span>
+                <span class="auth-badge auth-required">Auth Required</span>
+                <span class="endpoint-desc">List all users</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;">Returns all users with basic info (no passwords). <strong style="color:#c4b5fd;">Requires an active login session.</strong></p>
+                <a href="/api/users" target="_blank" class="try-btn"><i class="bi bi-play-fill"></i> Try it</a>
+                <div class="response-box">{
+  "count": 6,
+  "data": [
+    {
+      "id": 1,
+      "fullName": "System Admin",
+      "email": "admin@peakmetrics.com",
+      "role": "Super Admin",
+      "department": null,
+      "isActive": true,
+      "createdAt": "2025-01-01T00:00:00Z",
+      "lastLoginAt": "2026-05-07T09:30:00Z"
+    }
+  ]
+}</div>
+            </div>
+        </div>
+
+        <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <p style="color:#475569;font-size:0.8rem;margin:0;">PeakMetrics API &copy; @DateTime.Now.Year &nbsp;·&nbsp; All responses are JSON &nbsp;·&nbsp; UTF-8 encoded</p>
+            <div style="display:flex;gap:10px;">
+                <a href="/Home/Login" style="color:#64748b;font-size:0.8rem;text-decoration:none;">Login</a>
+                <a href="/Home/Routes" style="color:#64748b;font-size:0.8rem;text-decoration:none;">All Routes</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function toggle(header) {
+        var body = header.nextElementSibling;
+        var chevron = header.querySelector('.chevron');
+        body.classList.toggle('open');
+        chevron.classList.toggle('open');
+    }
+    </script>
+</body>
+</html>

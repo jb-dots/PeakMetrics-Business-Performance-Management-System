@@ -78,6 +78,21 @@
                             <span class="app-nav-label">@item.Label</span>
                         </a>
                     }
+                    @if (sessionUserRole is "Super Admin" or "Administrator")
+                    {
+                        var pendingCount = (int)(ViewData["PendingApprovalsCount"] ?? 0);
+                        var isPendingActive = string.Equals(currentAction, "PendingUsers", StringComparison.OrdinalIgnoreCase);
+                        <a asp-controller="Home" asp-action="PendingUsers"
+                           class="app-nav-link @(isPendingActive ? "active" : string.Empty)"
+                           title="Pending Approvals">
+                            <span class="app-nav-icon"><i class="bi bi-person-check"></i></span>
+                            <span class="app-nav-label">Pending Approvals</span>
+                            @if (pendingCount > 0)
+                            {
+                                <span class="badge bg-danger ms-auto" style="font-size:0.7rem;padding:3px 7px;border-radius:999px;">@pendingCount</span>
+                            }
+                        </a>
+                    }
                 </nav>
 
                 <!-- Sidebar footer: clickable avatar → popup with Profile + Sign out -->
@@ -130,6 +145,20 @@
                                class="app-nav-link @(isActive ? "active" : string.Empty)">
                                 <span class="app-nav-icon"><i class="bi @item.Icon"></i></span>
                                 <span class="app-nav-label">@item.Label</span>
+                            </a>
+                        }
+                        @if (sessionUserRole is "Super Admin" or "Administrator")
+                        {
+                            var pendingCount = (int)(ViewData["PendingApprovalsCount"] ?? 0);
+                            var isPendingActive = string.Equals(currentAction, "PendingUsers", StringComparison.OrdinalIgnoreCase);
+                            <a asp-controller="Home" asp-action="PendingUsers"
+                               class="app-nav-link @(isPendingActive ? "active" : string.Empty)">
+                                <span class="app-nav-icon"><i class="bi bi-person-check"></i></span>
+                                <span class="app-nav-label">Pending Approvals</span>
+                                @if (pendingCount > 0)
+                                {
+                                    <span class="badge bg-danger ms-auto" style="font-size:0.7rem;padding:3px 7px;border-radius:999px;">@pendingCount</span>
+                                }
                             </a>
                         }
                     </nav>

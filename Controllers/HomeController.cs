@@ -1863,6 +1863,13 @@ public class HomeController : Controller
 
         var sqls = new[]
         {
+            // AddAccountLockout migration (20260505013532)
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='FailedLoginAttempts') ALTER TABLE [Users] ADD [FailedLoginAttempts] int NULL",
+            "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='LockoutEnd') ALTER TABLE [Users] ADD [LockoutEnd] datetime2 NULL",
+            "UPDATE [Users] SET [FailedLoginAttempts]=0 WHERE [FailedLoginAttempts] IS NULL",
+            "IF NOT EXISTS (SELECT 1 FROM [__EFMigrationsHistory] WHERE [MigrationId]='20260505013532_AddAccountLockout') INSERT INTO [__EFMigrationsHistory]([MigrationId],[ProductVersion]) VALUES('20260505013532_AddAccountLockout','8.0.11')",
+            
+            // AddApprovalFields migration (20260506000001)
             "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='IsApproved') ALTER TABLE [Users] ADD [IsApproved] bit NOT NULL DEFAULT 0",
             "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='ApprovedAt') ALTER TABLE [Users] ADD [ApprovedAt] datetime2 NULL",
             "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('Users') AND name='ApprovedById') ALTER TABLE [Users] ADD [ApprovedById] nvarchar(max) NULL",
@@ -2193,7 +2200,16 @@ public class HomeController : Controller
     {
         if (!HasAccess("Super Admin", "Administrator")) return Forbid();
         ViewData[VdTitle] = "Create User";
-        return View(ViewUserForm, await BuildUserFormAsync(new UserFormViewModel(), cancellationToken));
+        
+        try
+        {
+            return View(ViewUserForm, await BuildUserFormAsync(new UserFormViewModel(), cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Failed to load user creation form: {ex.Message}";
+            return RedirectToAction(nameof(UserManagement));
+        }
     }
 
     [HttpPost]
@@ -2203,50 +2219,63 @@ public class HomeController : Controller
         if (!HasAccess("Super Admin", "Administrator")) return Forbid();
         ViewData[VdTitle] = "Create User";
 
-        // Password required on create
-        if (string.IsNullOrWhiteSpace(model.Password))
-            ModelState.AddModelError(nameof(model.Password), "Password is required when creating a user.");
-
-        // Prevent assigning Super Admin role through the UI
-        if (model.Role == "Super Admin")
+        try
         {
-            ModelState.AddModelError(nameof(model.Role), "The Super Admin role cannot be assigned through User Management.");
+            // Password required on create
+            if (string.IsNullOrWhiteSpace(model.Password))
+                ModelState.AddModelError(nameof(model.Password), "Password is required when creating a user.");
+
+            // Prevent assigning Super Admin role through the UI
+            if (model.Role == "Super Admin")
+            {
+                ModelState.AddModelError(nameof(model.Role), "The Super Admin role cannot be assigned through User Management.");
+            }
+
+            if (!ModelState.IsValid)
+                return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
+
+            var emailExists = await _db.Users.AnyAsync(u => u.Email == model.Email.Trim(), cancellationToken);
+            if (emailExists)
+            {
+                ModelState.AddModelError(nameof(model.Email), "A user with this email already exists.");
+                return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
+            }
+
+            var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+            var user = new AppUser
+            {
+                FullName     = model.FullName.Trim(),
+                Email        = model.Email.Trim(),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password!, workFactor: 11),
+                Role         = model.Role,
+                DepartmentId = model.DepartmentId,
+                IsActive     = model.IsActive,
+                CreatedAt    = DateTime.UtcNow,
+                // Set approval fields for manually created users (auto-approved)
+                IsApproved   = true,
+                EmailConfirmed = true,
+                ApprovedAt   = DateTime.UtcNow,
+                ApprovedById = actorId.ToString()
+            };
+            _db.Users.Add(user);
+            _db.AuditLogs.Add(new AuditLog
+            {
+                UserId     = actorId,
+                Action     = "Created User",
+                EntityType = EntityAppUser,
+                Details    = $"{user.FullName} ({user.Email}) — Role: {user.Role}",
+                OccurredAt = DateTime.UtcNow
+            });
+            await _db.SaveChangesAsync(cancellationToken);
+
+            TempData[TdSuccessMessage] = $"User \"{user.FullName}\" created successfully.";
+            return RedirectToAction(nameof(UserManagement));
         }
-
-        if (!ModelState.IsValid)
-            return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
-
-        var emailExists = await _db.Users.AnyAsync(u => u.Email == model.Email.Trim(), cancellationToken);
-        if (emailExists)
+        catch (Exception ex)
         {
-            ModelState.AddModelError(nameof(model.Email), "A user with this email already exists.");
+            ModelState.AddModelError(string.Empty, $"An error occurred while creating the user: {ex.Message}");
             return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
         }
-
-        var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
-        var user = new AppUser
-        {
-            FullName     = model.FullName.Trim(),
-            Email        = model.Email.Trim(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password!, workFactor: 11),
-            Role         = model.Role,
-            DepartmentId = model.DepartmentId,
-            IsActive     = model.IsActive,
-            CreatedAt    = DateTime.UtcNow
-        };
-        _db.Users.Add(user);
-        _db.AuditLogs.Add(new AuditLog
-        {
-            UserId     = actorId,
-            Action     = "Created User",
-            EntityType = EntityAppUser,
-            Details    = $"{user.FullName} ({user.Email}) — Role: {user.Role}",
-            OccurredAt = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync(cancellationToken);
-
-        TempData[TdSuccessMessage] = $"User \"{user.FullName}\" created successfully.";
-        return RedirectToAction(nameof(UserManagement));
     }
 
     [HttpGet]
@@ -2255,23 +2284,31 @@ public class HomeController : Controller
         if (!HasAccess("Super Admin", "Administrator")) return Forbid();
         ViewData[VdTitle] = "Edit User";
 
-        var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
-        if (user is null) return NotFound();
-
-        // Administrator cannot edit Super Admin accounts
-        var actorRole = HttpContext.Session.GetString(SessionUserRole);
-        if (actorRole == RoleAdministrator && user.Role == RoleAdmin) return Forbid();
-
-        var form = new UserFormViewModel
+        try
         {
-            Id           = user.Id,
-            FullName     = user.FullName,
-            Email        = user.Email,
-            Role         = user.Role,
-            DepartmentId = user.DepartmentId,
-            IsActive     = user.IsActive
-        };
-        return View(ViewUserForm, await BuildUserFormAsync(form, cancellationToken));
+            var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
+            if (user is null) return NotFound();
+
+            // Administrator cannot edit Super Admin accounts
+            var actorRole = HttpContext.Session.GetString(SessionUserRole);
+            if (actorRole == RoleAdministrator && user.Role == RoleAdmin) return Forbid();
+
+            var form = new UserFormViewModel
+            {
+                Id           = user.Id,
+                FullName     = user.FullName,
+                Email        = user.Email,
+                Role         = user.Role,
+                DepartmentId = user.DepartmentId,
+                IsActive     = user.IsActive
+            };
+            return View(ViewUserForm, await BuildUserFormAsync(form, cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            TempData["ErrorMessage"] = $"Failed to load user for editing: {ex.Message}";
+            return RedirectToAction(nameof(UserManagement));
+        }
     }
 
     [HttpPost]
@@ -2281,50 +2318,58 @@ public class HomeController : Controller
         if (!HasAccess("Super Admin", "Administrator")) return Forbid();
         ViewData[VdTitle] = "Edit User";
 
-        if (!ModelState.IsValid)
-            return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
-
-        var user = await _db.Users.FindAsync(new object[] { model.Id }, cancellationToken);
-        if (user is null) return NotFound();
-
-        var emailExists = await _db.Users
-            .AnyAsync(u => u.Email == model.Email.Trim() && u.Id != model.Id, cancellationToken);
-        if (emailExists)
+        try
         {
-            ModelState.AddModelError(nameof(model.Email), "A user with this email already exists.");
+            if (!ModelState.IsValid)
+                return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
+
+            var user = await _db.Users.FindAsync(new object[] { model.Id }, cancellationToken);
+            if (user is null) return NotFound();
+
+            var emailExists = await _db.Users
+                .AnyAsync(u => u.Email == model.Email.Trim() && u.Id != model.Id, cancellationToken);
+            if (emailExists)
+            {
+                ModelState.AddModelError(nameof(model.Email), "A user with this email already exists.");
+                return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
+            }
+
+            // Prevent assigning Super Admin role through the UI
+            if (model.Role == "Super Admin")
+            {
+                ModelState.AddModelError(nameof(model.Role), "The Super Admin role cannot be assigned through User Management.");
+                return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
+            }
+
+            var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+            user.FullName     = model.FullName.Trim();
+            user.Email        = model.Email.Trim();
+            user.Role         = model.Role;
+            user.DepartmentId = model.DepartmentId;
+            user.IsActive     = model.IsActive;
+
+            if (!string.IsNullOrWhiteSpace(model.Password))
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password, workFactor: 11);
+
+            _db.AuditLogs.Add(new AuditLog
+            {
+                UserId     = actorId,
+                Action     = "Updated User",
+                EntityType = EntityAppUser,
+                EntityId   = user.Id,
+                Details    = $"{user.FullName} ({user.Email}) — Role: {user.Role}",
+                OccurredAt = DateTime.UtcNow
+            });
+            await _db.SaveChangesAsync(cancellationToken);
+
+            TempData[TdSuccessMessage] = $"User \"{user.FullName}\" updated successfully.";
+            return RedirectToAction(nameof(UserManagement));
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError(string.Empty, $"An error occurred while updating the user: {ex.Message}");
             return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
         }
-
-        // Prevent assigning Super Admin role through the UI
-        if (model.Role == "Super Admin")
-        {
-            ModelState.AddModelError(nameof(model.Role), "The Super Admin role cannot be assigned through User Management.");
-            return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
-        }
-
-        var actorId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
-        user.FullName     = model.FullName.Trim();
-        user.Email        = model.Email.Trim();
-        user.Role         = model.Role;
-        user.DepartmentId = model.DepartmentId;
-        user.IsActive     = model.IsActive;
-
-        if (!string.IsNullOrWhiteSpace(model.Password))
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password, workFactor: 11);
-
-        _db.AuditLogs.Add(new AuditLog
-        {
-            UserId     = actorId,
-            Action     = "Updated User",
-            EntityType = EntityAppUser,
-            EntityId   = user.Id,
-            Details    = $"{user.FullName} ({user.Email}) — Role: {user.Role}",
-            OccurredAt = DateTime.UtcNow
-        });
-        await _db.SaveChangesAsync(cancellationToken);
-
-        TempData[TdSuccessMessage] = $"User \"{user.FullName}\" updated successfully.";
-        return RedirectToAction(nameof(UserManagement));
     }
 
     [HttpPost]
@@ -2412,11 +2457,30 @@ public class HomeController : Controller
 
     private async Task<UserFormViewModel> BuildUserFormAsync(UserFormViewModel model, CancellationToken ct)
     {
-        model.Departments = await _db.Departments
-            .Where(d => !d.IsArchived)
-            .OrderBy(d => d.Name)
-            .Select(d => new DepartmentOptionViewModel { Id = d.Id, Name = d.Name })
-            .ToListAsync(ct);
+        try
+        {
+            model.Departments = await _db.Departments
+                .Where(d => !d.IsArchived)
+                .OrderBy(d => d.Name)
+                .Select(d => new DepartmentOptionViewModel { Id = d.Id, Name = d.Name })
+                .ToListAsync(ct);
+        }
+        catch
+        {
+            // If IsArchived column doesn't exist yet, fall back to loading all departments
+            try
+            {
+                model.Departments = await _db.Departments
+                    .OrderBy(d => d.Name)
+                    .Select(d => new DepartmentOptionViewModel { Id = d.Id, Name = d.Name })
+                    .ToListAsync(ct);
+            }
+            catch
+            {
+                // If departments table has issues, return empty list
+                model.Departments = new List<DepartmentOptionViewModel>();
+            }
+        }
         return model;
     }
 

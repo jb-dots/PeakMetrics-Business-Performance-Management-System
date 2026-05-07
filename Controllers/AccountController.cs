@@ -79,9 +79,8 @@ public class AccountController : Controller
         }
 
         // ── Role guard (only Staff and Manager allowed) ───────────────────────
-        var allowedRoles = new[] { "Staff", "Manager" };
-        if (!allowedRoles.Contains(model.PendingRole))
-            model.PendingRole = "Staff";
+        // All self-registered users are assigned Staff role by default
+        // (Admin can change role later from User Management if needed)
 
         // ── Create pending user ───────────────────────────────────────────────
         var token = EmailService.GenerateToken();
@@ -93,7 +92,7 @@ public class AccountController : Controller
             PasswordHash       = BCrypt.Net.BCrypt.HashPassword(model.Password),
             Role               = "Staff",          // placeholder until approved
             DepartmentId       = model.DepartmentId,
-            PendingRole        = model.PendingRole,
+            PendingRole        = "Staff",          // hardcoded - all self-registrations are Staff
             PendingDepartmentId = model.DepartmentId?.ToString(),
             IsApproved         = false,
             EmailConfirmed     = false,

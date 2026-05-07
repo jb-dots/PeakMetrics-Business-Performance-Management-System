@@ -296,33 +296,23 @@
                         </div>
                     </div>
 
-                    <div class="pm-row">
-                        <div class="pm-field">
-                            <label asp-for="DepartmentId">Department</label>
-                            <select asp-for="DepartmentId" id="regDepartment">
-                                <option value="">— Select department —</option>
-                                @foreach (var dept in departments)
+                    <div class="pm-field">
+                        <label asp-for="DepartmentId">Department (Optional)</label>
+                        <select asp-for="DepartmentId" id="regDepartment">
+                            <option value="">— Select department —</option>
+                            @foreach (var dept in departments)
+                            {
+                                if (Model.DepartmentId == (int?)dept.Id)
                                 {
-                                    if (Model.DepartmentId == (int?)dept.Id)
-                                    {
-                                        <option value="@dept.Id" selected>@dept.Name</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@dept.Id">@dept.Name</option>
-                                    }
+                                    <option value="@dept.Id" selected>@dept.Name</option>
                                 }
-                            </select>
-                            <div class="pm-error">@Html.ValidationMessageFor(m => m.DepartmentId)</div>
-                        </div>
-                        <div class="pm-field">
-                            <label asp-for="PendingRole">Requested Role</label>
-                            <select asp-for="PendingRole" id="regRole">
-                                <option value="Staff">Staff</option>
-                                <option value="Manager">Manager</option>
-                            </select>
-                            <div class="pm-error">@Html.ValidationMessageFor(m => m.PendingRole)</div>
-                        </div>
+                                else
+                                {
+                                    <option value="@dept.Id">@dept.Name</option>
+                                }
+                            }
+                        </select>
+                        <div class="pm-error">@Html.ValidationMessageFor(m => m.DepartmentId)</div>
                     </div>
 
                     <button type="submit" class="pm-btn pm-btn-primary" id="registerBtn">Create Account</button>

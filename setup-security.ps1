@@ -1,7 +1,7 @@
 # Security Setup Script for PeakMetrics
 # Run this script to configure security scanning
 
-Write-Host "🔒 PeakMetrics Security Setup" -ForegroundColor Cyan
+Write-Host "PeakMetrics Security Setup" -ForegroundColor Cyan
 Write-Host "=============================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -134,4 +134,4 @@ Write-Host "  2. Configure GitHub Secrets (SONAR_TOKEN, etc.)" -ForegroundColor 
 Write-Host "  3. Test by making a commit" -ForegroundColor Gray
 Write-Host "  4. Push to GitHub to trigger Actions workflow" -ForegroundColor Gray
 Write-Host ""
-Write-Host "✅ Security setup complete!" -ForegroundColor Green
+Write-Host "Security setup complete!" -ForegroundColor Green

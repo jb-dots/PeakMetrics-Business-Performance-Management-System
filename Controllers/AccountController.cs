@@ -177,6 +177,149 @@ public class AccountController : Controller
         return View();
     }
 
+    // ── GET /Account/ForgotPassword ───────────────────────────────────────────
+    [HttpGet]
+    public IActionResult ForgotPassword()
+    {
+        return View(new ForgotPasswordViewModel());
+    }
+
+    // ── GET /Account/ForgotPasswordTest — raw diagnostic (no antiforgery) ────
+    [HttpGet]
+    public IActionResult ForgotPasswordTest()
+    {
+        return Content("ForgotPassword route is reachable. GET works.", "text/plain");
+    }
+
+    // ── POST /Account/ForgotPasswordTest — raw diagnostic (no antiforgery) ───
+    [HttpPost]
+    public IActionResult ForgotPasswordTestPost()
+    {
+        return Content($"POST reached controller. Form keys: {string.Join(", ", Request.Form.Keys)}", "text/plain");
+    }
+
+    // ── POST /Account/ForgotPassword ──────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var emailLower = model.Email.Trim().ToLowerInvariant();
+        var user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower, cancellationToken);
+
+        if (user != null)
+        {
+            // Generate a cryptographically secure token
+            var token = EmailService.GenerateToken();
+            var tokenExpiry = DateTime.UtcNow.AddHours(24);
+
+            try
+            {
+                // Store token in database
+                user.PasswordResetToken = token;
+                user.PasswordResetTokenExpiry = tokenExpiry;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                var inner = ex.InnerException?.Message ?? ex.Message;
+                ViewBag.DbError = $"Database error: {inner}";
+                return View(model);
+            }
+
+            try
+            {
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                await _email.SendPasswordResetEmailAsync(user.Email, user.FullName, user.Id, token, baseUrl, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Email failed but token is saved — show a specific message so the user knows
+                ViewBag.EmailError = $"Reset link saved but email delivery failed: {ex.Message}";
+                return View(model);
+            }
+        }
+        else
+        {
+            // Artificial delay for anti-enumeration (matches token generation + email time)
+            await Task.Delay(150, cancellationToken);
+        }
+
+        // Always display the same success message regardless of email existence
+        ViewBag.Success = true;
+        return View(model);
+    }
+
+    // ── GET /Account/ResetPassword ────────────────────────────────────────────
+    [HttpGet]
+    public IActionResult ResetPassword(int userId, string? token)
+    {
+        if (userId <= 0 || string.IsNullOrWhiteSpace(token))
+        {
+            ViewBag.Error = true;
+            return View(new ResetPasswordViewModel());
+        }
+
+        return View(new ResetPasswordViewModel
+        {
+            UserId = userId,
+            Token = token
+        });
+    }
+
+    // ── POST /Account/ResetPassword ───────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var user = await _db.Users.FindAsync(new object[] { model.UserId }, cancellationToken);
+        if (user == null)
+        {
+            ModelState.AddModelError(string.Empty, "This reset link is invalid or has expired. Please request a new one.");
+            ViewBag.Error = true;
+            return View(model);
+        }
+
+        // Validate token
+        if (string.IsNullOrWhiteSpace(user.PasswordResetToken) 
+            || user.PasswordResetToken != model.Token
+            || user.PasswordResetTokenExpiry == null
+            || user.PasswordResetTokenExpiry < DateTime.UtcNow)
+        {
+            ModelState.AddModelError(string.Empty, "This reset link is invalid or has expired. Please request a new one.");
+            ViewBag.Error = true;
+            return View(model);
+        }
+
+        // Update password
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+        user.PasswordResetToken = null;
+        user.PasswordResetTokenExpiry = null;
+        
+        // Write audit log
+        _db.AuditLogs.Add(new AuditLog
+        {
+            UserId = user.Id,
+            Action = "PasswordReset",
+            EntityType = "Auth",
+            Details = $"{user.Email} reset their password.",
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            OccurredAt = DateTime.UtcNow
+        });
+        
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // Redirect to login with success message
+        TempData["SuccessMessage"] = "Password reset successfully. Please log in with your new password.";
+        return RedirectToAction("Login", "Home");
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task PopulateDepartmentsAsync(CancellationToken ct)

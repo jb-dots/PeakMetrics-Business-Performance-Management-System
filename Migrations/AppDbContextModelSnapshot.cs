@@ -78,6 +78,12 @@ namespace PeakMetrics.Web.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpiry")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PendingDepartmentId")
                         .HasColumnType("nvarchar(max)");
 
@@ -104,11 +110,11 @@ namespace PeakMetrics.Web.Migrations
                             Id = 1,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "admin@peakmetrics.com",
-                            EmailConfirmed = false,
+                            EmailConfirmed = true,
                             FailedLoginAttempts = 0,
                             FullName = "System Admin",
                             IsActive = true,
-                            IsApproved = false,
+                            IsApproved = true,
                             PasswordHash = "$2a$11$K2GAaeAIPqKr7/DQp1xWIuSA95c53aTx071RgaoMS7U4nTO5P1LFG",
                             PendingRole = "Staff",
                             Role = "Super Admin"
@@ -119,11 +125,11 @@ namespace PeakMetrics.Web.Migrations
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 1,
                             Email = "manager@peakmetrics.com",
-                            EmailConfirmed = false,
+                            EmailConfirmed = true,
                             FailedLoginAttempts = 0,
                             FullName = "Maria Santos",
                             IsActive = true,
-                            IsApproved = false,
+                            IsApproved = true,
                             PasswordHash = "$2a$11$cA3Cig0PT.t2wVj5yONGl.kQHV4pczXahzNbmghQWOBiN8Q23o212",
                             PendingRole = "Staff",
                             Role = "Manager"
@@ -134,11 +140,11 @@ namespace PeakMetrics.Web.Migrations
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 3,
                             Email = "sarah@peakmetrics.com",
-                            EmailConfirmed = false,
+                            EmailConfirmed = true,
                             FailedLoginAttempts = 0,
                             FullName = "Sarah Johnson",
                             IsActive = true,
-                            IsApproved = false,
+                            IsApproved = true,
                             PasswordHash = "$2a$11$GTTjD7ErxWlfvdNygzUlaOi0jamF3GIPWHEjSUNyMgXAs3EFm58O6",
                             PendingRole = "Staff",
                             Role = "Staff"
@@ -149,11 +155,11 @@ namespace PeakMetrics.Web.Migrations
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 4,
                             Email = "michael@peakmetrics.com",
-                            EmailConfirmed = false,
+                            EmailConfirmed = true,
                             FailedLoginAttempts = 0,
                             FullName = "Michael Chen",
                             IsActive = true,
-                            IsApproved = false,
+                            IsApproved = true,
                             PasswordHash = "$2a$11$GTTjD7ErxWlfvdNygzUlaOi0jamF3GIPWHEjSUNyMgXAs3EFm58O6",
                             PendingRole = "Staff",
                             Role = "Staff"
@@ -164,11 +170,11 @@ namespace PeakMetrics.Web.Migrations
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 2,
                             Email = "emily@peakmetrics.com",
-                            EmailConfirmed = false,
+                            EmailConfirmed = true,
                             FailedLoginAttempts = 0,
                             FullName = "Emily Davis",
                             IsActive = true,
-                            IsApproved = false,
+                            IsApproved = true,
                             PasswordHash = "$2a$11$GTTjD7ErxWlfvdNygzUlaOi0jamF3GIPWHEjSUNyMgXAs3EFm58O6",
                             PendingRole = "Staff",
                             Role = "Staff"
@@ -178,11 +184,11 @@ namespace PeakMetrics.Web.Migrations
                             Id = 6,
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "executive@peakmetrics.com",
-                            EmailConfirmed = false,
+                            EmailConfirmed = true,
                             FailedLoginAttempts = 0,
                             FullName = "Executive User",
                             IsActive = true,
-                            IsApproved = false,
+                            IsApproved = true,
                             PasswordHash = "$2a$11$0yCucsKKCKwaqMLlZewNtugJYHERt1WN6Q7TaM51dHvjwEBKDOe/i",
                             PendingRole = "Staff",
                             Role = "Executive"

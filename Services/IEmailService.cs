@@ -14,4 +14,7 @@ public interface IEmailService
 
     /// <summary>Sends a rejection notification email to the rejected applicant.</summary>
     Task SendRejectionEmailAsync(string toEmail, string toName, CancellationToken ct = default);
+
+    /// <summary>Sends a password reset email with a token link.</summary>
+    Task SendPasswordResetEmailAsync(string toEmail, string toName, int userId, string token, string baseUrl, CancellationToken ct = default);
 }

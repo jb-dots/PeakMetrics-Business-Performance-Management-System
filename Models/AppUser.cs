@@ -56,6 +56,12 @@ public sealed class AppUser
     /// <summary>One-time token for email verification. Cleared after use.</summary>
     public string? ConfirmationToken { get; set; }
 
+    /// <summary>Password reset token. Cleared after use or expiry.</summary>
+    public string? PasswordResetToken { get; set; }
+
+    /// <summary>UTC timestamp when the password reset token expires.</summary>
+    public DateTime? PasswordResetTokenExpiry { get; set; }
+
     // Navigation
     public Department? Department { get; set; }
     public ICollection<KpiLogEntry> KpiLogEntries { get; set; } = new List<KpiLogEntry>();

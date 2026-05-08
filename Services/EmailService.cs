@@ -146,6 +146,57 @@ public sealed class EmailService : IEmailService
         await SendAsync(toEmail, toName, "Your PeakMetrics account request", body, ct);
     }
 
+    public async Task SendPasswordResetEmailAsync(
+        string toEmail, string toName, int userId, string token, string baseUrl, CancellationToken ct = default)
+    {
+        var encodedToken = System.Net.WebUtility.UrlEncode(token);
+        var resetLink = $"{baseUrl}/Account/ResetPassword?userId={userId}&token={encodedToken}";
+        
+        var body = $@"
+<div style=""font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);"">
+  <div style=""background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:36px 40px;text-align:center;"">
+    <h1 style=""color:#fff;margin:0;font-size:1.8rem;font-weight:800;"">PeakMetrics</h1>
+  </div>
+  <div style=""padding:40px;"">
+    <h2 style=""color:#0f172a;margin-top:0;"">Password Reset Request</h2>
+    <p style=""color:#475569;line-height:1.6;"">
+      Hello {toName},
+    </p>
+    <p style=""color:#475569;line-height:1.6;"">
+      We received a request to reset your password for your PeakMetrics account.
+    </p>
+    <p style=""color:#475569;line-height:1.6;"">
+      Click the button below to reset your password:
+    </p>
+    <div style=""text-align:center;margin:32px 0;"">
+      <a href=""{resetLink}""
+         style=""background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:1rem;display:inline-block;"">
+        Reset Password
+      </a>
+    </div>
+    <p style=""color:#475569;line-height:1.6;font-size:0.9rem;"">
+      Or copy and paste this link into your browser:
+    </p>
+    <p style=""word-break:break-all;color:#64748b;font-size:0.85rem;background:#f8fafc;padding:12px;border-radius:6px;"">
+      {resetLink}
+    </p>
+    <p style=""color:#94a3b8;font-size:0.85rem;margin-top:24px;"">
+      This link will expire in 24 hours.
+    </p>
+    <p style=""color:#94a3b8;font-size:0.85rem;"">
+      If you did not request a password reset, please ignore this email. Your password will remain unchanged.
+    </p>
+  </div>
+  <div style=""background:#f8fafc;padding:20px 40px;text-align:center;"">
+    <p style=""color:#94a3b8;font-size:0.8rem;margin:0;"">
+      &copy; {DateTime.UtcNow.Year} PeakMetrics. All rights reserved.
+    </p>
+  </div>
+</div>";
+
+        await SendAsync(toEmail, toName, "Reset your PeakMetrics password", body, ct);
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private async Task SendAsync(

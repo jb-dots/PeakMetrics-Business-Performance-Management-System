@@ -1,9 +1,20 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using PeakMetrics.Web.Data;
+using PeakMetrics.Web.Models;
 using PeakMetrics.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Forwarded headers (reverse proxy / shared hosting support) ───────────────
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Trust all proxies on shared hosting (MonsterASP sits behind IIS/nginx)
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // ── MVC + Anti-forgery ────────────────────────────────────────────────────────
 builder.Services.AddControllersWithViews();
@@ -11,7 +22,9 @@ builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.HttpOnly  = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    // Lax (not Strict) so the cookie is sent on same-site POST navigations
+    // and works correctly behind reverse proxies on shared hosting.
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
 // ── Database ──────────────────────────────────────────────────────────────────
@@ -47,7 +60,8 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    // Lax so session cookie is sent on same-site navigations behind reverse proxy
+    options.Cookie.SameSite = SameSiteMode.Lax;
 });
 
 var app = builder.Build();
@@ -90,6 +104,7 @@ app.Use(async (context, next) =>
 });
 
 // ── HTTPS redirection (before authentication) ─────────────────────────────────
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();

@@ -19,11 +19,23 @@ jobs:
           fetch-depth: 0  # Full history for better detection
       
       - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3
+        # Skip if this is an initial commit (no previous commit to diff against)
+        if: github.event.before != '0000000000000000000000000000000000000000'
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          # PRs: scan the PR diff
+          # Push: scan the diff between before and after the push
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event.pull_request.head.sha || github.sha }}
+          extra_args: --only-verified
+      
+      - name: TruffleHog Full Scan (Fallback)
+        uses: trufflesecurity/trufflehog@v3
+        # Run full scan for initial commits or manual triggers
+        if: github.event.before == '0000000000000000000000000000000000000000' || github.event_name == 'workflow_dispatch'
+        with:
+          path: ./
           extra_args: --only-verified
       
       - name: GitLeaks Secret Scan

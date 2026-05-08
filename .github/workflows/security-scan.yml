@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0  # Full history for better detection
       
       - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@main
         # Skip if this is an initial commit (no previous commit to diff against)
         if: github.event.before != '0000000000000000000000000000000000000000'
         with:
@@ -31,7 +31,7 @@ jobs:
           extra_args: --only-verified
       
       - name: TruffleHog Full Scan (Fallback)
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@main
         # Run full scan for initial commits or manual triggers
         if: github.event.before == '0000000000000000000000000000000000000000' || github.event_name == 'workflow_dispatch'
         with:

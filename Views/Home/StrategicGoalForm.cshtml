@@ -32,10 +32,14 @@
 
                     <div class="mb-3">
                         <label asp-for="Description" class="form-label fw-semibold">
-                            Description <span class="text-muted fw-normal">(optional)</span>
+                            Description <span class="text-muted fw-normal">(optional, supports Markdown)</span>
                         </label>
-                        <textarea asp-for="Description" class="form-control" rows="3"
-                                  placeholder="Describe what this goal aims to achieve..."></textarea>
+                        <textarea asp-for="Description" class="form-control markdown-editor" rows="6"
+                                  placeholder="Describe what this goal aims to achieve... (Markdown supported)"></textarea>
+                        <small class="text-muted">
+                            <i class="bi bi-markdown me-1"></i>
+                            Supports **bold**, *italic*, lists, links, and more
+                        </small>
                     </div>
 
                     <div class="row mb-3">
@@ -85,3 +89,27 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+<script>
+(function() {
+    var textarea = document.querySelector('.markdown-editor');
+    if (textarea) {
+        var simplemde = new SimpleMDE({
+            element: textarea,
+            spellChecker: false,
+            placeholder: "Describe what this goal aims to achieve... (Markdown supported)",
+            status: false,
+            toolbar: [
+                "bold", "italic", "heading", "|",
+                "quote", "unordered-list", "ordered-list", "|",
+                "link", "preview", "|",
+                "guide"
+            ]
+        });
+    }
+})();
+</script>
+}

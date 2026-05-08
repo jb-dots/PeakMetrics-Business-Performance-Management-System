@@ -37,6 +37,9 @@ builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// ── Markdown ──────────────────────────────────────────────────────────────────
+builder.Services.AddSingleton<IMarkdownService, MarkdownService>();
+
 // ── Session ───────────────────────────────────────────────────────────────────
 builder.Services.AddSession(options =>
 {

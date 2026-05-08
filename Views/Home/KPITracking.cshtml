@@ -7,14 +7,6 @@
     var showArchived = (bool)(ViewBag.ShowArchived ?? false);
 }
 
-@if (TempData["SuccessMessage"] is string successMsg)
-{
-    <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
-        <i class="bi bi-check-circle-fill"></i>
-        <span>@successMsg</span>
-    </div>
-}
-
 <div class="card card-clean mb-4">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -124,7 +116,7 @@
                             <th class="table-sortable" data-sort-type="text">Status</th>
                             @if (canManage)
                             {
-                                <th class="text-end">Actions</th>
+                                <th class="text-center">Actions</th>
                             }
                         </tr>
                     </thead>
@@ -150,8 +142,8 @@
                                 <td><span class="@statusClass">@kpi.Status</span></td>
                                 @if (canManage)
                                 {
-                                    <td class="text-end">
-                                        <div class="d-flex gap-1 justify-content-end">
+                                    <td class="text-center">
+                                        <div class="d-flex gap-1 justify-content-center flex-wrap">
                                             @if (!kpi.IsArchived)
                                             {
                                                 <a asp-controller="Home" asp-action="KPILogEntry" asp-route-kpiId="@kpi.Id"
@@ -165,8 +157,8 @@
                                                 <form asp-controller="Home" asp-action="KpiToggleActive" asp-route-id="@kpi.Id"
                                                       method="post" class="d-inline">
                                                     @Html.AntiForgeryToken()
-                                                    <button type="submit" class="btn btn-sm btn-archive d-inline-flex align-items-center gap-1" title="Archive">
-                                                        <i class="bi bi-archive"></i> Archive
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1" title="Deactivate KPI">
+                                                        <i class="bi bi-pause-circle"></i> Deactivate
                                                     </button>
                                                 </form>
                                             }
@@ -175,8 +167,8 @@
                                                 <form asp-controller="Home" asp-action="KpiToggleActive" asp-route-id="@kpi.Id"
                                                       method="post" class="d-inline">
                                                     @Html.AntiForgeryToken()
-                                                    <button type="submit" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1" title="Restore">
-                                                        <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                                    <button type="submit" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1" title="Activate KPI">
+                                                        <i class="bi bi-play-circle"></i> Activate
                                                     </button>
                                                 </form>
                                             }

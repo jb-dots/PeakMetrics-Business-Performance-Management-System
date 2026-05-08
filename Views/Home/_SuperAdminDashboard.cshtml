@@ -52,7 +52,7 @@
 
 <div class="row g-4 mb-4">
     <!-- Recent Audit Log -->
-    <div class="col-12 col-lg-8">
+    <div class="col-12">
         <div class="card card-clean">
             <div class="card-body">
                 <h5 class="card-title mb-3">Recent System Logs</h5>
@@ -89,20 +89,6 @@
                         </table>
                     </div>
                 }
-            </div>
-        </div>
-    </div>
-
-    <!-- User Role Distribution Chart -->
-    <div class="col-12 col-lg-4">
-        <div class="card card-clean">
-            <div class="card-body">
-                <h5 class="card-title mb-3">User Role Distribution</h5>
-                <div class="canvas-wrap">
-                    <canvas id="superAdminRoleChart"
-                            data-labels="@JsonSerializer.Serialize(Model.RoleDistribution.Keys.ToList())"
-                            data-datasets="@JsonSerializer.Serialize(Model.RoleDistribution.Values.ToList())"></canvas>
-                </div>
             </div>
         </div>
     </div>

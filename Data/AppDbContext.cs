@@ -222,8 +222,8 @@ public sealed class AppDbContext : DbContext
                 DepartmentId   = null,
                 CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive       = true,
-                IsApproved     = false,
-                EmailConfirmed = false
+                IsApproved     = true,
+                EmailConfirmed = true
             },
             new AppUser
             {
@@ -235,8 +235,8 @@ public sealed class AppDbContext : DbContext
                 DepartmentId   = 1,
                 CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive       = true,
-                IsApproved     = false,
-                EmailConfirmed = false
+                IsApproved     = true,
+                EmailConfirmed = true
             },
             new AppUser
             {
@@ -248,8 +248,8 @@ public sealed class AppDbContext : DbContext
                 DepartmentId   = 3,
                 CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive       = true,
-                IsApproved     = false,
-                EmailConfirmed = false
+                IsApproved     = true,
+                EmailConfirmed = true
             },
             new AppUser
             {
@@ -261,8 +261,8 @@ public sealed class AppDbContext : DbContext
                 DepartmentId   = 4,
                 CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive       = true,
-                IsApproved     = false,
-                EmailConfirmed = false
+                IsApproved     = true,
+                EmailConfirmed = true
             },
             new AppUser
             {
@@ -274,8 +274,8 @@ public sealed class AppDbContext : DbContext
                 DepartmentId   = 2,
                 CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive       = true,
-                IsApproved     = false,
-                EmailConfirmed = false
+                IsApproved     = true,
+                EmailConfirmed = true
             },
             new AppUser
             {
@@ -287,8 +287,8 @@ public sealed class AppDbContext : DbContext
                 DepartmentId   = null,
                 CreatedAt      = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                 IsActive       = true,
-                IsApproved     = false,
-                EmailConfirmed = false
+                IsApproved     = true,
+                EmailConfirmed = true
             }
         );
 

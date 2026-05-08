@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════
+   PeakMetrics Theme System
+   Light/Dark theme support using CSS custom properties
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─────────────────────────────────────────────
+     LIGHT THEME (Default)
+     ───────────────────────────────────────────── */
+  
+  /* Background Gradients */
+  --bg-gradient-start: #1e3a8a;
+  --bg-gradient-mid: #2563eb;
+  --bg-gradient-end: #60a5fa;
+  
+  /* Card & Surface Colors */
+  --card-bg: #ffffff;
+  --card-bg-secondary: #f8fafc;
+  --card-border: rgba(226, 232, 240, 1);
+  --card-shadow: rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: rgba(0, 0, 0, 0.15);
+  
+  /* Text Colors */
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #ffffff;
+  
+  /* Input & Form Colors */
+  --input-bg: transparent;
+  --input-border: #cbd5e1;
+  --input-border-focus: #2563eb;
+  --input-text: #0f172a;
+  --input-placeholder: #94a3b8;
+  
+  /* Link Colors */
+  --link-color: #2563eb;
+  --link-hover: #1e40af;
+  
+  /* Sidebar Colors - Light Blue Theme */
+  --sidebar-bg: #eff6ff;
+  --sidebar-text: #1e3a8a;
+  --sidebar-text-muted: #64748b;
+  --sidebar-hover: #dbeafe;
+  --sidebar-active: #2563eb;
+  --sidebar-border: #bfdbfe;
+  
+  /* Navbar Colors */
+  --navbar-bg: rgba(255, 255, 255, 0.92);
+  --navbar-border: #e2e8f0;
+  --navbar-text: #475569;
+  --navbar-text-hover: #1B2E6B;
+  
+  /* Button Colors */
+  --btn-primary-bg: #2563eb;
+  --btn-primary-hover: #1d4ed8;
+  --btn-primary-text: #ffffff;
+  
+  /* Status Colors */
+  --status-success: #16a34a;
+  --status-warning: #d97706;
+  --status-error: #ef4444;
+  --status-info: #2563eb;
+  
+  /* Border & Divider Colors */
+  --border-color: #e2e8f0;
+  --divider-color: #f1f5f9;
+  
+  /* Table Colors */
+  --table-header-bg: #f8fafc;
+  --table-row-hover: #f8fafc;
+  --table-border: #e2e8f0;
+}
+
+[data-theme="dark"] {
+  /* ─────────────────────────────────────────────
+     DARK THEME
+     ───────────────────────────────────────────── */
+  
+  /* Background Gradients */
+  --bg-gradient-start: #0a0e27;
+  --bg-gradient-mid: #1a1f3a;
+  --bg-gradient-end: #2563eb;
+  
+  /* Card & Surface Colors - Darker */
+  --card-bg: #1e293b;
+  --card-bg-secondary: #0f172a;
+  --card-border: rgba(51, 65, 85, 0.5);
+  --card-shadow: rgba(0, 0, 0, 0.5);
+  --card-shadow-hover: rgba(0, 0, 0, 0.7);
+  
+  /* Text Colors */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-inverse: #0f172a;
+  
+  /* Input & Form Colors */
+  --input-bg: rgba(15, 23, 42, 0.5);
+  --input-border: #334155;
+  --input-border-focus: #3b82f6;
+  --input-text: #e2e8f0;
+  --input-placeholder: #475569;
+  
+  /* Link Colors */
+  --link-color: #60a5fa;
+  --link-hover: #93c5fd;
+  
+  /* Sidebar Colors */
+  --sidebar-bg: #0f1729;
+  --sidebar-text: #e2e8f0;
+  --sidebar-text-muted: #64748b;
+  --sidebar-hover: #1a2332;
+  --sidebar-active: #3b82f6;
+  --sidebar-border: #1e293b;
+  
+  /* Navbar Colors */
+  --navbar-bg: rgba(15, 23, 41, 0.92);
+  --navbar-border: #1e293b;
+  --navbar-text: #94a3b8;
+  --navbar-text-hover: #60a5fa;
+  
+  /* Button Colors */
+  --btn-primary-bg: #3b82f6;
+  --btn-primary-hover: #2563eb;
+  --btn-primary-text: #ffffff;
+  
+  /* Status Colors (slightly adjusted for dark theme) */
+  --status-success: #22c55e;
+  --status-warning: #f59e0b;
+  --status-error: #f87171;
+  --status-info: #60a5fa;
+  
+  /* Border & Divider Colors */
+  --border-color: #334155;
+  --divider-color: #1e293b;
+  
+  /* Table Colors */
+  --table-header-bg: #0f1729;
+  --table-row-hover: #1a2332;
+  --table-border: #334155;
+}
+
+/* ─────────────────────────────────────────────
+   SMOOTH TRANSITIONS
+   ───────────────────────────────────────────── */
+
+* {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease, 
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+/* Disable transitions on page load to prevent flash */
+.no-transition * {
+  transition: none !important;
+}

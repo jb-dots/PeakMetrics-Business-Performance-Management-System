@@ -84,7 +84,7 @@ The single EF Core context. It defines these tables and their relationships:
 - A **KpiLogEntry** belongs to one **KPI** and was logged by one **User**
 - A **StrategicGoal** belongs to one **Perspective** and can be linked to many **KPIs** (via GoalKpi)
 - A **Notification** belongs to one **User** and optionally references one **KPI**
-- An **AuditLog** optionally references one **User**
+- An **SystemLog** optionally references one **User**
 
 ### Seed Data
 

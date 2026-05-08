@@ -175,22 +175,15 @@
 
                     <div class="mb-3">
                         <label asp-for="Description" class="form-label fw-semibold">
-                            Description <span class="text-muted fw-normal">(optional)</span>
+                            Description <span class="text-muted fw-normal">(optional, supports Markdown)</span>
                         </label>
-                        <textarea asp-for="Description" class="form-control" rows="2"
-                                  placeholder="Brief description of what this KPI measures..."></textarea>
+                        <textarea asp-for="Description" class="form-control markdown-editor" rows="4"
+                                  placeholder="Brief description of what this KPI measures... (Markdown supported)"></textarea>
+                        <small class="text-muted">
+                            <i class="bi bi-markdown me-1"></i>
+                            Supports **bold**, *italic*, lists, links, and more
+                        </small>
                     </div>
-
-                    @if (isEdit)
-                    {
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                <input asp-for="IsActive" class="form-check-input" type="checkbox" />
-                                <label asp-for="IsActive" class="form-check-label fw-semibold">Active</label>
-                                <div class="text-muted small">Inactive KPIs are hidden from the Log Entry form.</div>
-                            </div>
-                        </div>
-                    }
 
                     <div class="d-flex gap-2 justify-content-end">
                         <a asp-controller="Home" asp-action="KPITracking" class="btn btn-outline-secondary">Cancel</a>
@@ -207,8 +200,28 @@
 </div>
 
 @section Scripts {
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
 <script>
 (function () {
+    // Initialize markdown editor
+    var textarea = document.querySelector('.markdown-editor');
+    if (textarea) {
+        var simplemde = new SimpleMDE({
+            element: textarea,
+            spellChecker: false,
+            placeholder: "Brief description of what this KPI measures... (Markdown supported)",
+            status: false,
+            toolbar: [
+                "bold", "italic", "heading", "|",
+                "quote", "unordered-list", "ordered-list", "|",
+                "link", "preview", "|",
+                "guide"
+            ]
+        });
+    }
+
+    // Unit category selection logic
     var cards          = document.querySelectorAll('.unit-card');
     var hidden         = document.getElementById('unitHiddenField');
     var prefix         = document.getElementById('targetUnitPrefix');

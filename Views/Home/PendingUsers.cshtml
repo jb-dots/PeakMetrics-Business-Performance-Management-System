@@ -10,14 +10,6 @@
     </div>
 </div>
 
-@if (TempData["SuccessMessage"] is string successMsg)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle-fill me-2"></i>@successMsg
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
 @if (!Model.Any())
 {
     <div class="card-clean p-5 text-center">
@@ -63,20 +55,20 @@ else
                             <td class="text-muted">@user.RegistrationDate.ToString("MMM d, yyyy")</td>
                             <td class="text-end">
                                 <div class="d-flex gap-2 justify-content-end">
-                                    <form asp-action="ApproveUser" asp-route-id="@user.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-success"
-                                                onclick="return confirm('Approve @Html.Raw(user.FullName.Replace("'", "\\'"))\'s account?')">
-                                            <i class="bi bi-check-lg me-1"></i>Approve
-                                        </button>
-                                    </form>
-                                    <form asp-action="RejectUser" asp-route-id="@user.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Reject and delete @Html.Raw(user.FullName.Replace("'", "\\'"))\'s account? This cannot be undone.')">
-                                            <i class="bi bi-x-lg me-1"></i>Reject
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-success" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#approveModal"
+                                            data-user-id="@user.Id"
+                                            data-user-name="@user.FullName">
+                                        <i class="bi bi-check-lg me-1"></i>Approve
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#rejectModal"
+                                            data-user-id="@user.Id"
+                                            data-user-name="@user.FullName">
+                                        <i class="bi bi-x-lg me-1"></i>Reject
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -85,4 +77,73 @@ else
             </table>
         </div>
     </div>
+}
+
+
+<!-- Approve User Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border:none;border-radius:16px;padding:1.5rem;">
+            <div class="text-center">
+                <div class="mx-auto mb-3" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);display:flex;align-items:center;justify-content:center;">
+                    <i class="bi bi-check-circle-fill" style="font-size:1.75rem;color:#059669;"></i>
+                </div>
+                <h5 class="fw-bold mb-2" id="approveModalLabel">Approve User?</h5>
+                <p class="text-muted mb-4" id="approveModalMessage">This will grant <strong id="approveUserName"></strong> access to the system.</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal" style="border-radius:10px;">Cancel</button>
+                    <form id="approveForm" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-success px-4" style="border-radius:10px;">Approve</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject User Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border:none;border-radius:16px;padding:1.5rem;">
+            <div class="text-center">
+                <div class="mx-auto mb-3" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);display:flex;align-items:center;justify-content:center;">
+                    <i class="bi bi-x-circle-fill" style="font-size:1.75rem;color:# dc2626;"></i>
+                </div>
+                <h5 class="fw-bold mb-2" id="rejectModalLabel">Reject User?</h5>
+                <p class="text-muted mb-4" id="rejectModalMessage">This will permanently delete <strong id="rejectUserName"></strong>'s account request. This action cannot be undone.</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal" style="border-radius:10px;">Cancel</button>
+                    <form id="rejectForm" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger px-4" style="border-radius:10px;">Reject</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Handle approve modal
+    document.getElementById('approveModal').addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const userId = button.getAttribute('data-user-id');
+        const userName = button.getAttribute('data-user-name');
+        
+        document.getElementById('approveUserName').textContent = userName;
+        document.getElementById('approveForm').action = '/Home/ApproveUser/' + userId;
+    });
+    
+    // Handle reject modal
+    document.getElementById('rejectModal').addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const userId = button.getAttribute('data-user-id');
+        const userName = button.getAttribute('data-user-name');
+        
+        document.getElementById('rejectUserName').textContent = userName;
+        document.getElementById('rejectForm').action = '/Home/RejectUser/' + userId;
+    });
+</script>
 }

@@ -1,3 +1,4 @@
+@using PeakMetrics.Web.Helpers
 @model PeakMetrics.Web.ViewModels.StrategicPlanningViewModel
 @{
     var role        = ViewData["SessionUserRole"]?.ToString() ?? string.Empty;
@@ -24,14 +25,6 @@
     };
 
     var goals = Model.Goals.OrderBy(g => StatusConfig(g.Status).Priority).ToList();
-}
-
-@if (TempData["SuccessMessage"] is string successMsg)
-{
-    <div class="alert alert-success d-flex align-items-center gap-2 mb-4">
-        <i class="bi bi-check-circle-fill"></i>
-        <span>@successMsg</span>
-    </div>
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -130,7 +123,7 @@ else
 
                         @if (!string.IsNullOrWhiteSpace(goal.Description))
                         {
-                            <p class="text-muted mb-3" style="font-size:0.88rem;">@goal.Description</p>
+                            @Html.RenderMarkdown(goal.Description)
                         }
 
                         <div class="d-flex flex-wrap gap-3 small text-muted mt-auto">

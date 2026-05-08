@@ -64,6 +64,54 @@
 
     <div class="container-docs">
 
+        <div class="section-title">Libraries & Packages</div>
+
+        <div class="endpoint-card">
+            <div class="endpoint-header" onclick="toggle(this)">
+                <span class="method-badge" style="background:#1e1b4b;color:#a78bfa;border:1px solid #4c1d95;min-width:80px;">LIBRARY</span>
+                <span class="endpoint-path">Markdig</span>
+                <span class="tag">v0.37.0</span>
+                <span class="endpoint-desc">Markdown processor for .NET</span>
+                <i class="bi bi-chevron-down chevron"></i>
+            </div>
+            <div class="endpoint-body">
+                <div class="divider"></div>
+                <p style="color:#94a3b8;font-size:0.88rem;"><strong>Markdig</strong> is a fast, powerful, and extensible Markdown processor for .NET. Used to render description fields with rich formatting.</p>
+                
+                <p style="color:#7dd3fc;font-size:0.82rem;font-weight:600;margin-top:1rem;margin-bottom:0.5rem;">Features:</p>
+                <ul style="color:#cbd5e1;font-size:0.85rem;line-height:1.8;">
+                    <li>Converts Markdown to HTML</li>
+                    <li>Supports CommonMark + GitHub Flavored Markdown</li>
+                    <li>XSS protection with HTML sanitization</li>
+                    <li>Used for: Strategic Goals descriptions, KPI descriptions, Department descriptions</li>
+                </ul>
+
+                <p style="color:#7dd3fc;font-size:0.82rem;font-weight:600;margin-top:1rem;margin-bottom:0.5rem;">Installation:</p>
+                <div class="response-box" style="color:#fcd34d;">dotnet add package Markdig</div>
+
+                <p style="color:#7dd3fc;font-size:0.82rem;font-weight:600;margin-top:1rem;margin-bottom:0.5rem;">Usage Example:</p>
+                <div class="response-box" style="color:#cbd5e1;">using Markdig;
+
+// Convert markdown to HTML
+var markdown = "**Bold text** and *italic*";
+var html = Markdown.ToHtml(markdown);
+// Output: &lt;p&gt;&lt;strong&gt;Bold text&lt;/strong&gt; and &lt;em&gt;italic&lt;/em&gt;&lt;/p&gt;</div>
+
+                <p style="color:#7dd3fc;font-size:0.82rem;font-weight:600;margin-top:1rem;margin-bottom:0.5rem;">Supported Markdown Syntax:</p>
+                <table class="param-table">
+                    <tr><th>Syntax</th><th>Output</th></tr>
+                    <tr><td>**bold**</td><td><strong>bold</strong></td></tr>
+                    <tr><td>*italic*</td><td><em>italic</em></td></tr>
+                    <tr><td># Heading</td><td>H1 heading</td></tr>
+                    <tr><td>- List item</td><td>Bullet list</td></tr>
+                    <tr><td>[Link](url)</td><td>Hyperlink</td></tr>
+                    <tr><td>`code`</td><td>Inline code</td></tr>
+                </table>
+
+                <a href="https://github.com/xoofx/markdig" target="_blank" class="try-btn"><i class="bi bi-github me-1"></i> View on GitHub</a>
+            </div>
+        </div>
+
         <div class="section-title">Health</div>
 
         <div class="endpoint-card">

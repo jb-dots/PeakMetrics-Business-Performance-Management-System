@@ -53,16 +53,18 @@ if: github.event.before == '0000000000000000000000000000000000000000' || github.
 - Full scan ensures nothing is missed in these cases
 
 #### 3. Version Pinning
-Changed from `@main` to `@v3`:
+Using `@main` branch:
 
 ```yaml
-uses: trufflesecurity/trufflehog@v3
+uses: trufflesecurity/trufflehog@main
 ```
 
+**Note**: TruffleHog doesn't use semantic versioning tags (v1, v2, v3). The `@main` branch is the stable release branch for the GitHub Action.
+
 **Benefits:**
-- Stable, tested version
-- Predictable behavior
-- No unexpected breaking changes
+- Always uses the latest stable version
+- Maintained by TruffleHog team
+- Includes latest secret detection patterns
 
 ## Testing
 
@@ -148,8 +150,8 @@ To verify the fix is working:
    - This fetches full history for diff scanning
 
 3. **Check TruffleHog version**
-   - Ensure using `@v3` or later
-   - Check [TruffleHog releases](https://github.com/trufflesecurity/trufflehog/releases)
+   - Using `@main` (stable branch)
+   - Check [TruffleHog Action](https://github.com/trufflesecurity/trufflehog-actions-scan)
 
 ### Common Issues
 
@@ -157,7 +159,7 @@ To verify the fix is working:
 |-------|-------|----------|
 | "No commits to scan" | Shallow clone | Set `fetch-depth: 0` |
 | "BASE and HEAD same" | Wrong base/head values | Use event-appropriate values |
-| "Action not found" | Wrong version | Pin to `@v3` |
+| "Action not found" | Wrong version | Use `@main` branch |
 | Timeout | Full history scan | Use diff scan when possible |
 
 ## References

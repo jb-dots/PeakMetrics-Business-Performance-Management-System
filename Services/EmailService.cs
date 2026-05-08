@@ -204,37 +204,118 @@ public sealed class EmailService : IEmailService
     {
         try
         {
+            Console.WriteLine($"[EmailService.SendAsync] Starting email send");
+            Console.WriteLine($"[EmailService.SendAsync] To: {toEmail} ({toName})");
+            Console.WriteLine($"[EmailService.SendAsync] Subject: {subject}");
+            
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_settings.FromName, _settings.FromEmail));
             message.To.Add(new MailboxAddress(toName, toEmail));
             message.Subject = subject;
             message.Body    = new TextPart("html") { Text = htmlBody };
+            
+            Console.WriteLine($"[EmailService.SendAsync] MimeMessage created successfully");
 
             using var client = new SmtpClient();
+            
+            Console.WriteLine($"[EmailService.SendAsync] SmtpClient created");
+            Console.WriteLine($"[EmailService.SendAsync] SMTP Host: {_settings.SmtpHost}");
+            Console.WriteLine($"[EmailService.SendAsync] SMTP Port: {_settings.SmtpPort}");
+            Console.WriteLine($"[EmailService.SendAsync] From: {_settings.FromEmail} ({_settings.FromName})");
 
             // Try STARTTLS on port 587 first, fall back to SSL on port 465
             try
             {
+                Console.WriteLine($"[EmailService.SendAsync] Attempting to connect with STARTTLS on port {_settings.SmtpPort}...");
                 await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, SecureSocketOptions.StartTls, ct);
+                Console.WriteLine($"[EmailService.SendAsync] ✓ Connected successfully with STARTTLS");
             }
-            catch
+            catch (Exception connectEx)
             {
                 // Port 587 may be blocked by the host — try SSL on 465
+                Console.WriteLine($"[EmailService.SendAsync] × STARTTLS failed: {connectEx.GetType().Name} - {connectEx.Message}");
+                
                 if (!client.IsConnected)
-                    await client.ConnectAsync(_settings.SmtpHost, 465, SecureSocketOptions.SslOnConnect, ct);
+                {
+                    Console.WriteLine($"[EmailService.SendAsync] Attempting fallback: SSL on port 465...");
+                    try
+                    {
+                        await client.ConnectAsync(_settings.SmtpHost, 465, SecureSocketOptions.SslOnConnect, ct);
+                        Console.WriteLine($"[EmailService.SendAsync] ✓ Connected successfully with SSL on port 465");
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        Console.WriteLine($"[EmailService.SendAsync] × SSL fallback also failed: {fallbackEx.GetType().Name} - {fallbackEx.Message}");
+                        throw;
+                    }
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(_settings.SmtpUser))
-                await client.AuthenticateAsync(_settings.SmtpUser, _settings.SmtpPass, ct);
-            await client.SendAsync(message, ct);
-            await client.DisconnectAsync(true, ct);
+            {
+                Console.WriteLine($"[EmailService.SendAsync] Authenticating as: {_settings.SmtpUser}");
+                try
+                {
+                    await client.AuthenticateAsync(_settings.SmtpUser, _settings.SmtpPass, ct);
+                    Console.WriteLine($"[EmailService.SendAsync] ✓ Authentication successful");
+                }
+                catch (Exception authEx)
+                {
+                    Console.WriteLine($"[EmailService.SendAsync] × Authentication failed: {authEx.GetType().Name}");
+                    Console.WriteLine($"[EmailService.SendAsync] Message: {authEx.Message}");
+                    throw;
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[EmailService.SendAsync] No authentication required (SmtpUser is empty)");
+            }
 
-            _logger.LogInformation("Email sent to {ToEmail} with subject '{Subject}'", toEmail, subject);
+            Console.WriteLine($"[EmailService.SendAsync] Sending message...");
+            await client.SendAsync(message, ct);
+            Console.WriteLine($"[EmailService.SendAsync] ✓ Message sent successfully");
+            
+            Console.WriteLine($"[EmailService.SendAsync] Disconnecting...");
+            await client.DisconnectAsync(true, ct);
+            Console.WriteLine($"[EmailService.SendAsync] ✓ Disconnected");
+
+            _logger.LogInformation("✓ Email sent successfully to {ToEmail} with subject '{Subject}'", toEmail, subject);
+        }
+        catch (System.Net.Sockets.SocketException sockEx)
+        {
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] SocketException (network/host connection issue)");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Message: {sockEx.Message}");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Inner Exception: {sockEx.InnerException?.Message}");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Stack Trace: {sockEx.StackTrace}");
+            _logger.LogError(sockEx, "SocketException when sending email to {ToEmail}", toEmail);
+            throw;
+        }
+        catch (MailKit.Net.Smtp.SmtpCommandException smtpCmdEx)
+        {
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] SmtpCommandException (SMTP server rejected command)");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Status Code: {smtpCmdEx.StatusCode}");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Message: {smtpCmdEx.Message}");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Stack Trace: {smtpCmdEx.StackTrace}");
+            _logger.LogError(smtpCmdEx, "SMTP command failed when sending email to {ToEmail}", toEmail);
+            throw;
+        }
+        catch (MailKit.Net.Smtp.SmtpProtocolException smtpProtoEx)
+        {
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] SmtpProtocolException (SMTP protocol error)");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Message: {smtpProtoEx.Message}");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Stack Trace: {smtpProtoEx.StackTrace}");
+            _logger.LogError(smtpProtoEx, "SMTP protocol error when sending email to {ToEmail}", toEmail);
+            throw;
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Unexpected exception: {ex.GetType().Name}");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Message: {ex.Message}");
+            if (ex.InnerException != null)
+                Console.WriteLine($"[EmailService.SendAsync-ERROR] Inner Exception: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
+            Console.WriteLine($"[EmailService.SendAsync-ERROR] Stack Trace: {ex.StackTrace}");
             _logger.LogError(ex, "Failed to send email to {ToEmail} with subject '{Subject}'", toEmail, subject);
-            // Do not rethrow — email failure must not block the registration flow
+            throw;
         }
     }
 

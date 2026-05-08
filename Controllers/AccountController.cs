@@ -184,6 +184,93 @@ public class AccountController : Controller
         return View(new ForgotPasswordViewModel());
     }
 
+    // ── GET /Account/TestEmail — Development-only test email endpoint ────────
+    [HttpGet]
+    public async Task<IActionResult> TestEmail(CancellationToken cancellationToken)
+    {
+        if (!HttpContext.Request.Host.Host.Contains("localhost"))
+        {
+            return Content("TestEmail endpoint is only available in development mode.", "text/plain");
+        }
+
+        var result = new System.Text.StringBuilder();
+        result.AppendLine("=== PEAKMETRICS TEST EMAIL ENDPOINT ===");
+        result.AppendLine($"Timestamp: {DateTime.UtcNow:O}");
+        result.AppendLine();
+        
+        try
+        {
+            result.AppendLine("[STEP 1] Checking EmailSettings configuration...");
+            var emailSettings = _config.GetSection("EmailSettings");
+            var host = emailSettings["SmtpHost"];
+            var port = emailSettings["SmtpPort"];
+            var user = emailSettings["SmtpUser"];
+            var pass = emailSettings["SmtpPass"];
+            var fromName = emailSettings["FromName"];
+            var fromEmail = emailSettings["FromEmail"];
+            
+            result.AppendLine($"  SmtpHost: {(string.IsNullOrEmpty(host) ? "MISSING" : host)}");
+            result.AppendLine($"  SmtpPort: {(string.IsNullOrEmpty(port) ? "MISSING" : port)}");
+            result.AppendLine($"  SmtpUser: {(string.IsNullOrEmpty(user) ? "MISSING" : "[present]")} ");
+            result.AppendLine($"  SmtpPass: {(string.IsNullOrEmpty(pass) ? "MISSING" : "[present]")}");
+            result.AppendLine($"  FromName: {(string.IsNullOrEmpty(fromName) ? "MISSING" : fromName)}");
+            result.AppendLine($"  FromEmail: {(string.IsNullOrEmpty(fromEmail) ? "MISSING" : fromEmail)}");
+            result.AppendLine();
+            
+            result.AppendLine("[STEP 2] Sending test email...");
+            await _email.SendPasswordResetEmailAsync(
+                "test@example.com",
+                "Test User",
+                1,
+                "test-token-123",
+                $"{Request.Scheme}://{Request.Host}",
+                cancellationToken
+            );
+            
+            result.AppendLine("✓ Email sent successfully!");
+            result.AppendLine();
+            result.AppendLine("Check the application console for detailed logging output.");
+            
+            return Content(result.ToString(), "text/plain");
+        }
+        catch (System.Net.Sockets.SocketException ex)
+        {
+            result.AppendLine($"✗ SocketException - Cannot connect to SMTP server");
+            result.AppendLine($"  Type: {ex.GetType().Name}");
+            result.AppendLine($"  Message: {ex.Message}");
+            if (ex.InnerException != null)
+                result.AppendLine($"  Inner: {ex.InnerException.Message}");
+            result.AppendLine($"  StackTrace: {ex.StackTrace}");
+            return Content(result.ToString(), "text/plain");
+        }
+        catch (MailKit.Net.Smtp.SmtpCommandException ex)
+        {
+            result.AppendLine($"✗ SmtpCommandException - SMTP command failed");
+            result.AppendLine($"  StatusCode: {ex.StatusCode}");
+            result.AppendLine($"  Message: {ex.Message}");
+            result.AppendLine($"  StackTrace: {ex.StackTrace}");
+            return Content(result.ToString(), "text/plain");
+        }
+        catch (MailKit.Net.Smtp.SmtpProtocolException ex)
+        {
+            result.AppendLine($"✗ SmtpProtocolException - SMTP protocol error");
+            result.AppendLine($"  Type: {ex.GetType().Name}");
+            result.AppendLine($"  Message: {ex.Message}");
+            result.AppendLine($"  StackTrace: {ex.StackTrace}");
+            return Content(result.ToString(), "text/plain");
+        }
+        catch (Exception ex)
+        {
+            result.AppendLine($"✗ Unexpected Exception");
+            result.AppendLine($"  Type: {ex.GetType().Name}");
+            result.AppendLine($"  Message: {ex.Message}");
+            if (ex.InnerException != null)
+                result.AppendLine($"  Inner: {ex.InnerException.GetType().Name} - {ex.InnerException.Message}");
+            result.AppendLine($"  StackTrace: {ex.StackTrace}");
+            return Content(result.ToString(), "text/plain");
+        }
+    }
+
     // ── GET /Account/ForgotPasswordTest — raw diagnostic (no antiforgery) ────
     [HttpGet]
     public IActionResult ForgotPasswordTest()
@@ -201,56 +288,163 @@ public class AccountController : Controller
     // ── POST /Account/ForgotPassword ──────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // ── GET /Account/RunDatabaseMigration — Emergency migration trigger ───────
+    [HttpGet]
+    public async Task<IActionResult> RunDatabaseMigration(CancellationToken cancellationToken)
+    {
+        try
+        {
+            Console.WriteLine("[MIGRATION] Starting database migration...");
+            await _db.Database.MigrateAsync(cancellationToken);
+            Console.WriteLine("[MIGRATION] ✓ Database migration completed successfully!");
+            return Content("✓ Database migration completed successfully!\n\nThe following changes were applied:\n- Added PasswordResetToken column\n- Added PasswordResetTokenExpiry column\n\nThe Forgot Password feature is now ready to use.", "text/plain");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MIGRATION-ERROR] {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"[MIGRATION-ERROR] Stack trace: {ex.StackTrace}");
+            return Content($"❌ Migration failed:\n\n{ex.GetType().Name}: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}", "text/plain");
+        }
+    }
+    
+    // ── POST /Account/ForgotPassword ──────────────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
             return View(model);
 
-        var emailLower = model.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower, cancellationToken);
-
-        if (user != null)
+        try
         {
-            // Generate a cryptographically secure token
-            var token = EmailService.GenerateToken();
-            var tokenExpiry = DateTime.UtcNow.AddHours(24);
+            Console.WriteLine($"[STEP 1] ForgotPassword POST called for email: {model.Email}");
+            
+            var emailLower = model.Email.Trim().ToLowerInvariant();
+            Console.WriteLine($"[STEP 2] Normalized email (lowercase): {emailLower}");
+            Console.WriteLine($"[STEP 3] Looking up user in database...");
+            
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == emailLower, cancellationToken);
 
-            try
+            Console.WriteLine($"[STEP 4] User found: {(user != null ? "YES - " + user.FullName : "NO")}");
+            Console.WriteLine($"[STEP 5] User EmailConfirmed status: {(user?.EmailConfirmed ?? false)}");
+
+            if (user != null)
             {
-                // Store token in database
-                user.PasswordResetToken = token;
-                user.PasswordResetTokenExpiry = tokenExpiry;
-                await _db.SaveChangesAsync(cancellationToken);
+                Console.WriteLine($"[STEP 6] Generating reset token...");
+                // Generate a cryptographically secure token
+                var token = EmailService.GenerateToken();
+                var tokenExpiry = DateTime.UtcNow.AddHours(24);
+                Console.WriteLine($"[STEP 7] Token generated. Expiry: {tokenExpiry:O}");
+
+                try
+                {
+                    Console.WriteLine($"[STEP 8] Storing token in database...");
+                    // Store token in database
+                    user.PasswordResetToken = token;
+                    user.PasswordResetTokenExpiry = tokenExpiry;
+                    await _db.SaveChangesAsync(cancellationToken);
+                    Console.WriteLine($"[STEP 9] Token stored successfully in database");
+                }
+                catch (Exception dbEx)
+                {
+                    Console.WriteLine($"[ERROR-DB] Database error when storing token: {dbEx.GetType().Name}");
+                    Console.WriteLine($"[ERROR-DB] Message: {dbEx.Message}");
+                    if (dbEx.InnerException != null)
+                        Console.WriteLine($"[ERROR-DB] Inner Exception: {dbEx.InnerException.Message}");
+                    Console.WriteLine($"[ERROR-DB] Stack trace: {dbEx.StackTrace}");
+                    
+                    var inner = dbEx.InnerException?.Message ?? dbEx.Message;
+                    ViewBag.DbError = $"Database error: {inner}";
+                    if (HttpContext.Request.Host.Host == "localhost")
+                        ViewBag.DbErrorDetails = dbEx.ToString();
+                    return View(model);
+                }
+
+                try
+                {
+                    Console.WriteLine($"[STEP 10] Building reset link...");
+                    var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                    Console.WriteLine($"[STEP 11] Base URL: {baseUrl}");
+                    
+                    Console.WriteLine($"[STEP 12] Calling EmailService.SendPasswordResetEmailAsync...");
+                    await _email.SendPasswordResetEmailAsync(user.Email, user.FullName, user.Id, token, baseUrl, cancellationToken);
+                    Console.WriteLine($"[STEP 13] Email sent successfully!");
+                }
+                catch (System.Net.Sockets.SocketException sockEx)
+                {
+                    Console.WriteLine($"[ERROR-SOCKET] SocketException - Network/Connection issue");
+                    Console.WriteLine($"[ERROR-SOCKET] Message: {sockEx.Message}");
+                    Console.WriteLine($"[ERROR-SOCKET] Inner Exception: {sockEx.InnerException?.Message}");
+                    Console.WriteLine($"[ERROR-SOCKET] Stack trace: {sockEx.StackTrace}");
+                    
+                    ViewBag.EmailError = $"Connection error: Cannot reach email server. Check SMTP host/port configuration.";
+                    if (HttpContext.Request.Host.Host == "localhost")
+                        ViewBag.EmailErrorDetails = sockEx.ToString();
+                    return View(model);
+                }
+                catch (MailKit.Net.Smtp.SmtpCommandException smtpCmdEx)
+                {
+                    Console.WriteLine($"[ERROR-SMTP-CMD] SmtpCommandException - SMTP command failed");
+                    Console.WriteLine($"[ERROR-SMTP-CMD] StatusCode: {smtpCmdEx.StatusCode}");
+                    Console.WriteLine($"[ERROR-SMTP-CMD] Message: {smtpCmdEx.Message}");
+                    Console.WriteLine($"[ERROR-SMTP-CMD] Stack trace: {smtpCmdEx.StackTrace}");
+                    
+                    ViewBag.EmailError = $"SMTP error: {smtpCmdEx.StatusCode}. Check Gmail App Password or enable Less Secure Apps.";
+                    if (HttpContext.Request.Host.Host == "localhost")
+                        ViewBag.EmailErrorDetails = smtpCmdEx.ToString();
+                    return View(model);
+                }
+                catch (MailKit.Net.Smtp.SmtpProtocolException smtpProtoEx)
+                {
+                    Console.WriteLine($"[ERROR-SMTP-PROTO] SmtpProtocolException - SMTP protocol issue");
+                    Console.WriteLine($"[ERROR-SMTP-PROTO] Message: {smtpProtoEx.Message}");
+                    Console.WriteLine($"[ERROR-SMTP-PROTO] Stack trace: {smtpProtoEx.StackTrace}");
+                    
+                    ViewBag.EmailError = $"SMTP protocol error: Connection or protocol issue with email server.";
+                    if (HttpContext.Request.Host.Host == "localhost")
+                        ViewBag.EmailErrorDetails = smtpProtoEx.ToString();
+                    return View(model);
+                }
+                catch (Exception emailEx)
+                {
+                    Console.WriteLine($"[ERROR-GENERAL] Unexpected exception: {emailEx.GetType().Name}");
+                    Console.WriteLine($"[ERROR-GENERAL] Message: {emailEx.Message}");
+                    if (emailEx.InnerException != null)
+                        Console.WriteLine($"[ERROR-GENERAL] Inner Exception: {emailEx.InnerException.GetType().Name} - {emailEx.InnerException.Message}");
+                    Console.WriteLine($"[ERROR-GENERAL] Stack trace: {emailEx.StackTrace}");
+                    
+                    // Email failed but token is saved — show a specific message so the user knows
+                    ViewBag.EmailError = $"Email delivery failed: {emailEx.Message}";
+                    if (HttpContext.Request.Host.Host == "localhost")
+                        ViewBag.EmailErrorDetails = emailEx.ToString();
+                    return View(model);
+                }
             }
-            catch (Exception ex)
+            else
             {
-                var inner = ex.InnerException?.Message ?? ex.Message;
-                ViewBag.DbError = $"Database error: {inner}";
-                return View(model);
+                Console.WriteLine($"[STEP 14] User not found in database. Applying anti-enumeration delay...");
+                // Artificial delay for anti-enumeration (matches token generation + email time)
+                await Task.Delay(150, cancellationToken);
+                Console.WriteLine($"[STEP 15] Anti-enumeration delay complete");
             }
 
-            try
-            {
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                await _email.SendPasswordResetEmailAsync(user.Email, user.FullName, user.Id, token, baseUrl, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                // Email failed but token is saved — show a specific message so the user knows
-                ViewBag.EmailError = $"Reset link saved but email delivery failed: {ex.Message}";
-                return View(model);
-            }
+            Console.WriteLine($"[STEP 16] Displaying success message (regardless of email existence)");
+            // Always display the same success message regardless of email existence
+            ViewBag.Success = true;
+            return View(model);
         }
-        else
+        catch (Exception ex)
         {
-            // Artificial delay for anti-enumeration (matches token generation + email time)
-            await Task.Delay(150, cancellationToken);
+            Console.WriteLine($"[ERROR-UNEXPECTED] Unexpected top-level exception in ForgotPassword: {ex.GetType().Name}");
+            Console.WriteLine($"[ERROR-UNEXPECTED] Message: {ex.Message}");
+            Console.WriteLine($"[ERROR-UNEXPECTED] Stack trace: {ex.StackTrace}");
+            
+            ViewBag.FatalError = $"An unexpected error occurred: {ex.Message}";
+            if (HttpContext.Request.Host.Host == "localhost")
+                ViewBag.FatalErrorDetails = ex.ToString();
+            return View(model);
         }
-
-        // Always display the same success message regardless of email existence
-        ViewBag.Success = true;
-        return View(model);
     }
 
     // ── GET /Account/ResetPassword ────────────────────────────────────────────

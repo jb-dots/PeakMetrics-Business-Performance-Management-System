@@ -28,3 +28,32 @@ appsettings.json
 appsettings.Development.json
 appsettings.Production.json
 deploy.secrets.bat
+
+# Security - Private keys and certificates
+*.pfx
+*.p12
+*.key
+*.pem
+id_rsa
+id_dsa
+*.cer
+*.crt
+
+# Security - Environment files
+.env
+.env.local
+.env.*.local
+
+# Security - Database files with sensitive data
+*.db
+*.sqlite
+*.sqlite3
+
+# Security - Backup files that might contain secrets
+*.bak
+*.backup
+*.old
+*_backup
+
+# Security - Personal migration files
+*UpdateSuperAdminEmail*

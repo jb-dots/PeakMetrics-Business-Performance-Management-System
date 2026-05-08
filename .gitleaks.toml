@@ -1,0 +1,90 @@
+# GitLeaks configuration for PeakMetrics
+# This file defines what patterns to detect as secrets
+
+title = "PeakMetrics Security Configuration"
+
+# Allowlist for false positives
+[allowlist]
+description = "Allowlisted files and patterns"
+paths = [
+    '''appsettings.example.json''',
+    '''\.git/''',
+    '''node_modules/''',
+    '''obj/''',
+    '''bin/''',
+]
+
+# Allow bcrypt hashes (they're safe)
+regexes = [
+    '''\$2[ayb]\$[0-9]{2}\$[A-Za-z0-9\.\/]{53}''',  # bcrypt hashes
+    '''@Html\.AntiForgeryToken\(\)''',              # CSRF tokens
+]
+
+# Custom rules for .NET projects
+[[rules]]
+id = "connection-string-password"
+description = "Connection string with password"
+regex = '''(?i)(Password|Pwd)\s*=\s*[^;]{3,}'''
+path = '''(appsettings\.json|appsettings\..*\.json|web\.config)'''
+tags = ["connection-string", "password"]
+
+[[rules]]
+id = "email-credentials"
+description = "Email service credentials"
+regex = '''(?i)(smtp.*password|email.*password)\s*[:=]\s*["\'][^"\']{3,}["\']'''
+tags = ["email", "password"]
+
+[[rules]]
+id = "api-key"
+description = "API Key"
+regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*["\'][A-Za-z0-9]{20,}["\']'''
+tags = ["api", "key"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret Key"
+regex = '''(?i)(jwt[_-]?secret|jwtsecret)\s*[:=]\s*["\'][^"\']{10,}["\']'''
+tags = ["jwt", "secret"]
+
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
+tags = ["private-key"]
+
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "access-key"]
+
+[[rules]]
+id = "azure-connection-string"
+description = "Azure Connection String"
+regex = '''DefaultEndpointsProtocol=https;AccountName=[^;]+;AccountKey=[A-Za-z0-9+/=]{88}'''
+tags = ["azure", "connection-string"]
+
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+tags = ["google", "api-key"]
+
+[[rules]]
+id = "slack-token"
+description = "Slack Token"
+regex = '''xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,32}'''
+tags = ["slack", "token"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''gh[pousr]_[A-Za-z0-9_]{36,255}'''
+tags = ["github", "token"]
+
+[[rules]]
+id = "personal-email"
+description = "Personal email addresses in code"
+regex = '''[a-zA-Z0-9._%+-]+@(gmail|yahoo|hotmail|outlook|umindanao\.edu\.ph)\.com'''
+path = '''(\.cs|\.cshtml|Migrations/.*)'''
+tags = ["email", "pii"]

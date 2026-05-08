@@ -1,0 +1,193 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better detection
+      
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+      
+      - name: GitLeaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+      
+      - name: Check for sensitive files
+        run: |
+          echo "Checking for sensitive files that should not be committed..."
+          
+          SENSITIVE_FILES=(
+            "appsettings.json"
+            "appsettings.Development.json"
+            "appsettings.Production.json"
+            "deploy.secrets.bat"
+            "*.pfx"
+            "*.p12"
+            "*.key"
+            "*.pem"
+            "id_rsa"
+            "id_dsa"
+          )
+          
+          FOUND_SENSITIVE=0
+          
+          for pattern in "${SENSITIVE_FILES[@]}"; do
+            if git ls-files | grep -q "$pattern"; then
+              echo "❌ ERROR: Found sensitive file matching pattern: $pattern"
+              git ls-files | grep "$pattern"
+              FOUND_SENSITIVE=1
+            fi
+          done
+          
+          if [ $FOUND_SENSITIVE -eq 1 ]; then
+            echo ""
+            echo "Sensitive files detected! Please remove them from git."
+            exit 1
+          fi
+          
+          echo "✅ No sensitive files detected"
+      
+      - name: Check for hardcoded secrets in code
+        run: |
+          echo "Scanning for hardcoded secrets in source code..."
+          
+          # Check for common secret patterns
+          if grep -r -n -E "(password|passwd|pwd)\s*=\s*['\"][^'\"]{3,}['\"]" \
+            --include="*.cs" \
+            --include="*.cshtml" \
+            --exclude-dir=obj \
+            --exclude-dir=bin \
+            --exclude-dir=.git \
+            .; then
+            echo "❌ WARNING: Found potential hardcoded passwords"
+            echo "Please review the matches above"
+            # Don't fail on this, just warn
+          fi
+          
+          # Check for API keys
+          if grep -r -n -E "(api[_-]?key|apikey)\s*=\s*['\"][^'\"]{10,}['\"]" \
+            --include="*.cs" \
+            --include="*.cshtml" \
+            --exclude-dir=obj \
+            --exclude-dir=bin \
+            --exclude-dir=.git \
+            .; then
+            echo "❌ WARNING: Found potential API keys"
+            echo "Please review the matches above"
+          fi
+          
+          # Check for connection strings with passwords
+          if grep -r -n -E "Password\s*=\s*[^;]{3,}" \
+            --include="*.cs" \
+            --include="*.json" \
+            --exclude="appsettings.example.json" \
+            --exclude-dir=obj \
+            --exclude-dir=bin \
+            --exclude-dir=.git \
+            .; then
+            echo "❌ WARNING: Found potential connection string passwords"
+            echo "Please review the matches above"
+          fi
+          
+          echo "✅ Secret pattern scan complete"
+
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Restore dependencies
+        run: dotnet restore
+      
+      - name: Check for vulnerable packages
+        run: |
+          echo "Scanning for vulnerable NuGet packages..."
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
+          
+          if grep -q "has the following vulnerable packages" vulnerability-report.txt; then
+            echo "❌ WARNING: Vulnerable packages detected!"
+            echo "Please review the report above and update packages"
+            # Don't fail the build, just warn
+          else
+            echo "✅ No vulnerable packages detected"
+          fi
+      
+      - name: Upload vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulnerability-report
+          path: vulnerability-report.txt
+
+  code-quality:
+    name: Code Quality & Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      
+      - name: Install SonarCloud scanner
+        run: dotnet tool install --global dotnet-sonarscanner
+      
+      - name: Build and analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "⚠️  SONAR_TOKEN not configured. Skipping SonarCloud analysis."
+            echo "To enable: Add SONAR_TOKEN to repository secrets"
+          else
+            dotnet-sonarscanner begin \
+              /k:"your-project-key" \
+              /o:"your-organization" \
+              /d:sonar.token="${SONAR_TOKEN}" \
+              /d:sonar.host.url="https://sonarcloud.io"
+            
+            dotnet build --no-incremental
+            
+            dotnet-sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+          fi

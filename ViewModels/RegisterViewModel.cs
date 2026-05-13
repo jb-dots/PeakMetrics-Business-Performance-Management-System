@@ -25,4 +25,8 @@ public sealed class RegisterViewModel
 
     /// <summary>"Staff" or "Manager" only.</summary>
     public string PendingRole { get; set; } = "Staff";
+
+    /// <summary>Must be true — user must accept Terms and Privacy Policy before registering.</summary>
+    [Range(typeof(bool), "true", "true", ErrorMessage = "You must agree to the Terms and Conditions and Privacy Policy.")]
+    public bool AgreeToTerms { get; set; }
 }

@@ -31,6 +31,15 @@ dotnet publish PeakMetrics.Web.csproj -c Release ^
   /p:SkipExtraFilesOnServer=True ^
   --nologo
 
+REM ── Wait for IIS to spin up then force-seed sample data ─────────────────────
+echo.
+echo Waiting 20 seconds for app to start on MonsterASP...
+timeout /t 20 /nobreak > nul
+echo.
+echo Seeding sample data...
+curl -s "https://peakmetrics.runasp.net/api/seed"
+echo.
+echo Seed complete.
 echo.
 echo ========================================
 echo  Deploy complete! Check the site:

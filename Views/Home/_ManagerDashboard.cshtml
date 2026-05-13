@@ -114,7 +114,14 @@
                 else
                 {
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 small">
+                        <table class="table table-hover align-middle mb-0 small" style="table-layout:fixed;width:100%;">
+                            <colgroup>
+                                <col style="width:32%">
+                                <col style="width:22%">
+                                <col style="width:16%">
+                                <col style="width:16%">
+                                <col style="width:14%">
+                            </colgroup>
                             <thead class="table-light">
                                 <tr>
                                     <th>KPI</th>
@@ -128,11 +135,11 @@
                                 @foreach (var log in Model.RecentLogs)
                                 {
                                     <tr>
-                                        <td class="fw-semibold">@log.KpiName</td>
-                                        <td class="text-muted">@log.LoggedBy</td>
-                                        <td>@log.ActualWithUnit</td>
-                                        <td>@await Html.PartialAsync("_StatusBadge", log.Status)</td>
-                                        <td class="text-muted">@log.RelativeTime</td>
+                                        <td class="fw-semibold text-truncate" style="max-width:0;">@log.KpiName</td>
+                                        <td class="text-muted text-truncate" style="max-width:0;">@log.LoggedBy</td>
+                                        <td class="text-nowrap">@log.ActualWithUnit</td>
+                                        <td style="white-space:nowrap;">@await Html.PartialAsync("_StatusBadge", log.Status)</td>
+                                        <td class="text-muted text-nowrap">@log.RelativeTime</td>
                                     </tr>
                                 }
                             </tbody>

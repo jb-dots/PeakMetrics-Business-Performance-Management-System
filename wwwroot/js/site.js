@@ -843,3 +843,47 @@
         initApiRetryButtons();
     });
 })();
+
+// ── Show / Hide Password Toggle ───────────────────────────────────────────────
+// Automatically wires up any password input that has a sibling or nearby
+// [data-pw-toggle] button. Call initPasswordToggles() after DOM ready,
+// or use the data-pw-wrap / data-pw-toggle pattern in markup.
+//
+// Usage in Razor:
+//   <div class="pw-wrap">
+//     <input type="password" id="myPw" />
+//     <button type="button" class="pw-toggle-btn" data-pw-toggle="myPw"
+//             aria-label="Show password">
+//       <i class="bi bi-eye"></i>
+//     </button>
+//   </div>
+// ─────────────────────────────────────────────────────────────────────────────
+(function () {
+    function initPasswordToggles() {
+        document.querySelectorAll('[data-pw-toggle]').forEach(function (btn) {
+            var targetId = btn.getAttribute('data-pw-toggle');
+            var input = document.getElementById(targetId);
+            if (!input) return;
+
+            btn.addEventListener('click', function () {
+                var isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+
+                // Swap icon
+                var icon = btn.querySelector('i');
+                if (icon) {
+                    icon.className = isHidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+                }
+
+                // Update aria-label
+                btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPasswordToggles);
+    } else {
+        initPasswordToggles();
+    }
+})();

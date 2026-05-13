@@ -148,6 +148,22 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// ── Sample data seeder ────────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        await SampleDataSeeder.SeedAsync(db, logger);
+        logger.LogInformation("Sample data seeding completed.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Sample data seeding failed.");
+    }
+}
+
 // ── Error handling ────────────────────────────────────────────────────────────
 if (!app.Environment.IsDevelopment())
 {

@@ -10,6 +10,12 @@
     <Content Remove="appsettings.Production.json" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Exclude the test project folder from the web project's compilation -->
+    <Compile Remove="PeakMetrics.Tests/**" />
+    <Content Remove="PeakMetrics.Tests/**" />
+    <None Remove="PeakMetrics.Tests/**" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="MailKit" Version="4.6.0" />
     <PackageReference Include="Markdig" Version="1.1.3" />

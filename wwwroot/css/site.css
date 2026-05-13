@@ -2151,3 +2151,71 @@ body.sidebar-collapsed .sidebar-user-popup {
 .markdown-content input[type="checkbox"]:disabled {
     cursor: not-allowed;
 }
+
+/* ── Show / Hide Password Toggle ─────────────────────────────────────────── */
+.pw-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.pw-wrap input {
+    flex: 1;
+    padding-right: 2.4rem !important;
+}
+
+.pw-toggle-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 0 0.4rem;
+    cursor: pointer;
+    color: var(--text-secondary, #64748b);
+    font-size: 1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+    z-index: 2;
+}
+
+.pw-toggle-btn:hover {
+    color: var(--text-primary, #1e293b);
+}
+
+/* For the standalone login/register pages that use .pm-field style inputs */
+.pm-pw-wrap {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+}
+
+.pm-pw-wrap input {
+    flex: 1;
+    padding-right: 2rem !important;
+}
+
+.pm-pw-toggle-btn {
+    position: absolute;
+    right: 2px;
+    bottom: 10px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--text-secondary, #64748b);
+    font-size: 1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+    z-index: 2;
+}
+
+.pm-pw-toggle-btn:hover {
+    color: var(--text-primary, #1e293b);
+}

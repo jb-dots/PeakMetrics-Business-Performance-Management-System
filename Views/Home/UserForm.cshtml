@@ -55,8 +55,16 @@
                                 <span class="text-muted fw-normal">(optional)</span>
                             }
                         </label>
-                        <input asp-for="Password" type="password" class="form-control"
-                               placeholder="@(isEdit ? "Leave blank to keep current password" : "Minimum 6 characters")" />
+                        <div class="input-group">
+                            <input asp-for="Password" type="password" class="form-control"
+                                   id="userFormPassword"
+                                   placeholder="@(isEdit ? "Leave blank to keep current password" : "Minimum 6 characters")" />
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="togglePw('userFormPassword',this)"
+                                    aria-label="Show password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                         @if (isEdit)
                         {
                             <div class="form-text text-muted">Leave blank to keep the current password.</div>
@@ -132,6 +140,19 @@
 
 @section Scripts {
 <script>
+function togglePw(id, btn) {
+    var input = document.getElementById(id);
+    var icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+        btn.setAttribute('aria-label', 'Hide password');
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+        btn.setAttribute('aria-label', 'Show password');
+    }
+}
 (function () {
     var cards      = document.querySelectorAll('.unit-card[data-role]');
     var hidden     = document.getElementById('roleHiddenField');

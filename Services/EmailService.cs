@@ -197,6 +197,63 @@ public sealed class EmailService : IEmailService
         await SendAsync(toEmail, toName, "Reset your PeakMetrics password", body, ct);
     }
 
+    public async Task SendKpiAlertEmailAsync(
+        string toEmail, string toName, string kpiName, string status,
+        string period, string department, CancellationToken ct = default)
+    {
+        var statusColor = status == "Behind" ? "#dc2626" : "#d97706";
+        var statusBg    = status == "Behind" ? "#fef2f2" : "#fffbeb";
+        var emoji       = status == "Behind" ? "🔴" : "🟡";
+
+        var body = $@"
+<div style=""font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);"">
+  <div style=""background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:36px 40px;text-align:center;"">
+    <h1 style=""color:#fff;margin:0;font-size:1.8rem;font-weight:800;"">PeakMetrics</h1>
+    <p style=""color:#bfdbfe;margin:8px 0 0;font-size:0.95rem;"">KPI Performance Alert</p>
+  </div>
+  <div style=""padding:40px;"">
+    <div style=""background:{statusBg};border-left:4px solid {statusColor};border-radius:6px;padding:16px 20px;margin-bottom:24px;"">
+      <p style=""margin:0;font-size:1.1rem;font-weight:700;color:{statusColor};"">
+        {emoji} {kpiName} is <strong>{status}</strong>
+      </p>
+    </div>
+    <p style=""color:#475569;line-height:1.6;"">Hi {toName},</p>
+    <p style=""color:#475569;line-height:1.6;"">
+      A KPI in the <strong>{department}</strong> department requires your attention.
+    </p>
+    <table style=""width:100%;border-collapse:collapse;margin:20px 0;"">
+      <tr style=""background:#f8fafc;"">
+        <td style=""padding:10px 14px;font-weight:600;color:#374151;border:1px solid #e5e7eb;width:40%;"">KPI</td>
+        <td style=""padding:10px 14px;color:#374151;border:1px solid #e5e7eb;"">{kpiName}</td>
+      </tr>
+      <tr>
+        <td style=""padding:10px 14px;font-weight:600;color:#374151;border:1px solid #e5e7eb;"">Department</td>
+        <td style=""padding:10px 14px;color:#374151;border:1px solid #e5e7eb;"">{department}</td>
+      </tr>
+      <tr style=""background:#f8fafc;"">
+        <td style=""padding:10px 14px;font-weight:600;color:#374151;border:1px solid #e5e7eb;"">Period</td>
+        <td style=""padding:10px 14px;color:#374151;border:1px solid #e5e7eb;"">{period}</td>
+      </tr>
+      <tr>
+        <td style=""padding:10px 14px;font-weight:600;color:#374151;border:1px solid #e5e7eb;"">Status</td>
+        <td style=""padding:10px 14px;font-weight:700;color:{statusColor};border:1px solid #e5e7eb;"">{status}</td>
+      </tr>
+    </table>
+    <p style=""color:#475569;line-height:1.6;"">
+      Please log in to PeakMetrics to review this KPI and take appropriate action.
+    </p>
+  </div>
+  <div style=""background:#f8fafc;padding:20px 40px;text-align:center;"">
+    <p style=""color:#94a3b8;font-size:0.8rem;margin:0;"">
+      &copy; {DateTime.UtcNow.Year} PeakMetrics. All rights reserved.
+    </p>
+  </div>
+</div>";
+
+        var subject = $"{emoji} KPI Alert: {kpiName} is {status} — {period}";
+        await SendAsync(toEmail, toName, subject, body, ct);
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private async Task SendAsync(

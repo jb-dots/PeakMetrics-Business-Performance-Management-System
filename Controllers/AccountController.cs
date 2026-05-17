@@ -156,15 +156,17 @@ public class AccountController : Controller
         user.ConfirmationToken = null;
         await _db.SaveChangesAsync(cancellationToken);
 
-        // Notify all Admins / Super Admins
+        // Notify all Admins / Super Admins via email
         try
         {
-            var adminEmails = await _db.Users
-                .Where(u => u.Role == "Super Admin" || u.Role == "Administrator")
-                .Select(u => u.Email)
+            var admins = await _db.Users
+                .Where(u => (u.Role == "Super Admin" || u.Role == "Administrator") && u.IsActive)
+                .Select(u => new { u.Email, u.FullName })
                 .ToListAsync(cancellationToken);
 
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var baseUrl     = $"{Request.Scheme}://{Request.Host}";
+            var adminEmails = admins.Select(a => a.Email).ToList();
+
             if (adminEmails.Count > 0)
                 await _email.SendAdminNewUserNotificationAsync(user.FullName, user.Email, adminEmails, baseUrl, cancellationToken);
         }
@@ -285,9 +287,6 @@ public class AccountController : Controller
         return Content($"POST reached controller. Form keys: {string.Join(", ", Request.Form.Keys)}", "text/plain");
     }
 
-    // ── POST /Account/ForgotPassword ──────────────────────────────────────────
-    [HttpPost]
-    [ValidateAntiForgeryToken]
     // ── GET /Account/RunDatabaseMigration — Emergency migration trigger ───────
     [HttpGet]
     public async Task<IActionResult> RunDatabaseMigration(CancellationToken cancellationToken)

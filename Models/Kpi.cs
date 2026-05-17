@@ -7,7 +7,7 @@ public sealed class Kpi
     public int Id { get; set; }
 
     [Required(ErrorMessage = "KPI name is required.")]
-    [StringLength(100, ErrorMessage = "KPI name cannot exceed 100 characters.")]
+    [StringLength(200, ErrorMessage = "KPI name cannot exceed 200 characters.")]
     public string Name { get; set; } = string.Empty;
 
     public int PerspectiveId { get; set; }

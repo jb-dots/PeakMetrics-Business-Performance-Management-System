@@ -104,6 +104,16 @@
                         </div>
                     </div>
 
+                    @* ── Frequency ── *@
+                    <div class="mb-3">
+                        <label asp-for="Frequency" class="form-label fw-semibold">Reporting Frequency</label>
+                        <select asp-for="Frequency" class="form-select">
+                            <option value="Monthly"   selected="@(Model.Frequency == "Monthly"   ? "selected" : null)">Monthly</option>
+                            <option value="Quarterly" selected="@(Model.Frequency == "Quarterly" ? "selected" : null)">Quarterly</option>
+                            <option value="Annual"    selected="@(Model.Frequency == "Annual"    ? "selected" : null)">Annual</option>
+                        </select>
+                    </div>
+
                     @* ── Measurement Type ── *@
                     <div class="mb-3">
                         <p class="form-label fw-semibold mb-0">Measurement Type</p>

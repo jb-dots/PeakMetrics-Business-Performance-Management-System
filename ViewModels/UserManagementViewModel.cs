@@ -32,8 +32,11 @@ public sealed class UserFormViewModel
     [MaxLength(256, ErrorMessage = "Email cannot exceed 256 characters.")]
     public string Email { get; set; } = string.Empty;
 
-    [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
+    [MinLength(8, ErrorMessage = "Password must be at least 8 characters.")]
     public string? Password { get; set; }
+
+    [StringLength(20)]
+    public string? PhoneNumber { get; set; }
 
     [Required(ErrorMessage = "Role is required.")]
     public string Role { get; set; } = string.Empty;

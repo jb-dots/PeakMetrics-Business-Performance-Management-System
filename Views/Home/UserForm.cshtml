@@ -75,9 +75,21 @@
                     @* ── Role Cards ── *@
                     <div class="mb-3">
                         <label for="roleHiddenField" class="form-label fw-semibold">Role</label>
-                        <p class="text-muted small mb-2">Select the role that defines this user's access level.</p>
-                        <input type="hidden" asp-for="Role" id="roleHiddenField" />
-                        <div class="row g-2" id="roleCardGrid">
+                        @if (Model.Role == "Super Admin")
+                        {
+                            @* Super Admin role cannot be changed through the UI — show read-only badge *@
+                            <input type="hidden" asp-for="Role" />
+                            <div class="p-3 rounded bg-light border d-flex align-items-center gap-2">
+                                <i class="bi bi-shield-fill-check text-primary"></i>
+                                <span class="fw-semibold">Super Admin</span>
+                                <span class="text-muted small ms-2">— This role can only be changed directly in the database.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted small mb-2">Select the role that defines this user's access level.</p>
+                            <input type="hidden" asp-for="Role" id="roleHiddenField" />
+                            <div class="row g-2" id="roleCardGrid">
                             @foreach (var role in roles)
                             {
                                 var isSelected = Model.Role == role.Value;
@@ -93,9 +105,10 @@
                                     </label>
                                 </div>
                             }
-                        </div>
-                        <div id="roleValidationMsg" class="text-danger small mt-1 d-none">Please select a role.</div>
-                        <span asp-validation-for="Role" class="text-danger small"></span>
+                            </div>
+                            <div id="roleValidationMsg" class="text-danger small mt-1 d-none">Please select a role.</div>
+                            <span asp-validation-for="Role" class="text-danger small"></span>
+                        }
                     </div>
 
                     @* ── Department ── *@
@@ -111,6 +124,17 @@
                             }
                         </select>
                         <span asp-validation-for="DepartmentId" class="text-danger small"></span>
+                    </div>
+
+                    @* ── Phone Number ── *@
+                    <div class="mb-3">
+                        <label asp-for="PhoneNumber" class="form-label fw-semibold">
+                            Phone Number <span class="text-muted fw-normal">(optional)</span>
+                        </label>
+                        <input asp-for="PhoneNumber" type="tel" class="form-control"
+                               placeholder="e.g. +639171234567" />
+                        <div class="form-text text-muted">E.164 format (e.g. +639171234567).</div>
+                        <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
                     </div>
 
                     @* ── Active toggle (edit only) ── *@

@@ -7,7 +7,7 @@ public sealed class Department
     public int Id { get; set; }
 
     [Required(ErrorMessage = "Department name is required.")]
-    [StringLength(50, ErrorMessage = "Department name cannot exceed 50 characters.")]
+    [StringLength(100, ErrorMessage = "Department name cannot exceed 100 characters.")]
     public string Name { get; set; } = string.Empty;
 
     [StringLength(500)]

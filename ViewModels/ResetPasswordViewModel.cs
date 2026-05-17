@@ -11,7 +11,7 @@ public sealed class ResetPasswordViewModel
     public string Token { get; set; } = string.Empty;
     
     [Required(ErrorMessage = "Password is required.")]
-    [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]
     public string NewPassword { get; set; } = string.Empty;
     
     [Required(ErrorMessage = "Password confirmation is required.")]

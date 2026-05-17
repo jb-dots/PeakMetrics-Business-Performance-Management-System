@@ -56,6 +56,12 @@ public sealed class AppUser
     /// <summary>One-time token for email verification. Cleared after use.</summary>
     public string? ConfirmationToken { get; set; }
 
+    /// <summary>
+    /// Mobile phone number in E.164 format (e.g. +639171234567). Optional.
+    /// </summary>
+    [StringLength(20)]
+    public string? PhoneNumber { get; set; }
+
     /// <summary>Password reset token. Cleared after use or expiry.</summary>
     public string? PasswordResetToken { get; set; }
 

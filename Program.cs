@@ -50,6 +50,9 @@ builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// ── PDF Report ────────────────────────────────────────────────────────────────
+builder.Services.AddSingleton<PdfReportService>();
+
 // ── Email Configuration Validation (Startup Check) ──────────────────────────
 {
     var emailSettings = builder.Configuration.GetSection("EmailSettings");
@@ -145,6 +148,32 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         logger.LogError(ex, "Failed to ensure password reset columns exist.");
+    }
+}
+
+// ── Ensure PhoneNumber column exists (safe ALTER TABLE fallback) ──────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS (
+                SELECT 1 FROM sys.columns
+                WHERE object_id = OBJECT_ID(N'[dbo].[Users]')
+                  AND name = 'PhoneNumber'
+            )
+            BEGIN
+                ALTER TABLE [dbo].[Users]
+                ADD [PhoneNumber] nvarchar(20) NULL;
+            END
+        ");
+        logger.LogInformation("PhoneNumber column verified/added successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to ensure PhoneNumber column exists.");
     }
 }
 

@@ -467,7 +467,8 @@
                 {
                     <div class="pm-alert pm-shake" id="loginError">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        @Html.ValidationMessage(string.Empty)
+                        @{ var modelError = ViewData.ModelState[string.Empty]?.Errors.FirstOrDefault()?.ErrorMessage; }
+                        @modelError
                     </div>
                 }
 

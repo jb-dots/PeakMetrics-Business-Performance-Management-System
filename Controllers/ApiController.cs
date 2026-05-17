@@ -808,10 +808,19 @@ public class ApiController : ControllerBase
     /// <summary>
     /// Force-seeds all sample data. Clears existing KPI logs, strategic goals,
     /// notifications, and audit logs then re-inserts everything fresh.
+    /// Requires Super Admin role.
     /// </summary>
     [HttpGet("seed")]
     public async Task<IActionResult> Seed(CancellationToken ct)
     {
+        // Restrict to Super Admin only — this endpoint wipes and reseeds live data
+        var userId = HttpContext.Session.GetInt32("UserId");
+        if (userId is null)
+            return Unauthorized(new { error = "Authentication required." });
+
+        var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+        if (role != "Super Admin")
+            return StatusCode(403, new { error = "Super Admin access required." });
         try
         {
             await SampleDataSeeder.ForceSeedAsync(_db, _logger);

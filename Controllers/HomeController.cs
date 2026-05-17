@@ -48,11 +48,13 @@ public class HomeController : Controller
 
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
+    private readonly PdfReportService _pdf;
 
-    public HomeController(AppDbContext db, IEmailService email)
+    public HomeController(AppDbContext db, IEmailService email, PdfReportService pdf)
     {
-        _db    = db;
+        _db   = db;
         _email = email;
+        _pdf  = pdf;
     }
 
     // ── Auth guard ────────────────────────────────────────────────────────────
@@ -62,9 +64,7 @@ public class HomeController : Controller
         var isPublic = string.Equals(action, nameof(Login),          StringComparison.OrdinalIgnoreCase)
                     || string.Equals(action, nameof(Logout),         StringComparison.OrdinalIgnoreCase)
                     || string.Equals(action, nameof(Routes),         StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(action, nameof(Diagnostics),    StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(action, nameof(ApiDocs),        StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(action, nameof(ApplyMigration), StringComparison.OrdinalIgnoreCase);
+                    || string.Equals(action, nameof(ApiDocs),        StringComparison.OrdinalIgnoreCase);
 
         if (!isPublic && HttpContext.Session.GetInt32(SessionUserId) is null)
         {
@@ -228,8 +228,9 @@ public class HomeController : Controller
         var adminId   = HttpContext.Session.GetInt32(SessionUserId) ?? 0;
         var adminName = HttpContext.Session.GetString(SessionUserName) ?? "Admin";
 
-        var userName  = user.FullName;
-        var userEmail = user.Email;
+        var userName    = user.FullName;
+        var userEmail   = user.Email;
+        var userPhone   = user.PhoneNumber;
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -1049,18 +1050,100 @@ public class HomeController : Controller
             Period         = model.Period
         });
 
+        // Keep Kpi.Status in sync with the latest computed status
+        kpi.Status = computedStatus;
+
+        // ── Multi-role notifications for At Risk / Behind KPIs ─────────────
         if (computedStatus != StatusOnTrack)
         {
-            _db.Notifications.Add(new Notification
+            try
             {
-                UserId    = userId,
-                Title     = $"{kpi.Name} is {computedStatus}",
-                Message   = $"Actual value {FormatValue(model.ActualValue, kpi.Unit)} is below the target of {FormatValue(kpi.Target, kpi.Unit)} for {model.Period}.",
-                Type      = computedStatus == StatusBehind ? "Alert" : "Warning",
-                KpiId     = model.KpiId,
-                IsRead    = false,
-                CreatedAt = DateTime.UtcNow
-            });
+                var loggerName = (await _db.Users
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.FullName)
+                    .FirstOrDefaultAsync(cancellationToken)) ?? "Unknown";
+
+                var deptName = kpi.Department?.Name
+                    ?? (await _db.Departments.FindAsync(new object[] { kpi.DepartmentId }, cancellationToken))?.Name
+                    ?? "Unknown";
+
+                // Collect user IDs and names for notification — use projections to avoid
+                // loading full AppUser entities (which may reference columns not yet migrated)
+                var notifyTargets = new List<(int Id, string FullName)>();
+
+                // 1. The logger themselves
+                notifyTargets.Add((userId, loggerName));
+
+                // 2. All Managers in the same department as the KPI
+                var departmentManagers = await _db.Users
+                    .Where(u => u.Role == RoleManager
+                        && u.DepartmentId == kpi.DepartmentId
+                        && u.IsActive
+                        && u.IsApproved
+                        && u.Id != userId)
+                    .Select(u => new { u.Id, u.FullName })
+                    .ToListAsync(cancellationToken);
+                notifyTargets.AddRange(departmentManagers.Select(u => (u.Id, u.FullName)));
+
+                // 3. All Administrators
+                var administrators = await _db.Users
+                    .Where(u => u.Role == RoleAdministrator
+                        && u.IsActive
+                        && u.IsApproved
+                        && u.Id != userId)
+                    .Select(u => new { u.Id, u.FullName })
+                    .ToListAsync(cancellationToken);
+                notifyTargets.AddRange(administrators.Select(u => (u.Id, u.FullName)));
+
+                // 4. All Super Admins
+                var superAdmins = await _db.Users
+                    .Where(u => u.Role == RoleAdmin
+                        && u.IsActive
+                        && u.IsApproved
+                        && u.Id != userId)
+                    .Select(u => new { u.Id, u.FullName })
+                    .ToListAsync(cancellationToken);
+                notifyTargets.AddRange(superAdmins.Select(u => (u.Id, u.FullName)));
+
+                // 5. Executives — only for Behind status
+                if (computedStatus == StatusBehind)
+                {
+                    var executives = await _db.Users
+                        .Where(u => u.Role == RoleExecutive
+                            && u.IsActive
+                            && u.IsApproved
+                            && u.Id != userId)
+                        .Select(u => new { u.Id, u.FullName })
+                        .ToListAsync(cancellationToken);
+                    notifyTargets.AddRange(executives.Select(u => (u.Id, u.FullName)));
+                }
+
+                // Remove duplicates
+                notifyTargets = notifyTargets
+                    .GroupBy(u => u.Id)
+                    .Select(g => g.First())
+                    .ToList();
+
+                // Create a notification record for each user
+                foreach (var target in notifyTargets)
+                {
+                    _db.Notifications.Add(new Notification
+                    {
+                        UserId    = target.Id,
+                        KpiId     = kpi.Id,
+                        Title     = computedStatus == StatusBehind
+                            ? $"KPI Alert: {kpi.Name} is Behind Target"
+                            : $"KPI Warning: {kpi.Name} is At Risk",
+                        Message   = computedStatus == StatusBehind
+                            ? $"{kpi.Name} in {deptName} department is Behind target. Actual: {FormatValue(model.ActualValue, kpi.Unit)} vs Target: {FormatValue(kpi.Target, kpi.Unit)}. Logged by {loggerName}."
+                            : $"{kpi.Name} in {deptName} department is At Risk. Actual: {FormatValue(model.ActualValue, kpi.Unit)} vs Target: {FormatValue(kpi.Target, kpi.Unit)}. Logged by {loggerName}.",
+                        Type      = computedStatus == StatusBehind ? "Alert" : "Warning",
+                        IsRead    = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+            catch { /* notification creation failure must not block the log entry */ }
         }
 
         _db.AuditLogs.Add(new AuditLog
@@ -1073,6 +1156,59 @@ public class HomeController : Controller
         });
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // ── Email alert for At Risk / Behind KPIs ─────────────────────────────
+        if (computedStatus != StatusOnTrack)
+        {
+            try
+            {
+                var deptNameForEmail = kpi.Department?.Name
+                    ?? (await _db.Departments.FindAsync(new object[] { kpi.DepartmentId }, cancellationToken))?.Name
+                    ?? "Unknown";
+
+                // Notify: managers of the KPI's department + all Admins + Super Admins
+                // + Executives (Behind only) — excluding the person who just logged
+                var emailRecipientsQuery = _db.Users
+                    .Where(u => u.IsActive
+                             && u.IsApproved
+                             && u.Id != userId
+                             && (
+                                 (u.DepartmentId == kpi.DepartmentId && u.Role == RoleManager)
+                                 || u.Role == RoleAdmin
+                                 || u.Role == RoleAdministrator
+                             ));
+
+                var emailRecipients = await emailRecipientsQuery
+                    .Select(u => new { u.FullName, u.Email })
+                    .ToListAsync(cancellationToken);
+
+                // Add Executives only for Behind status
+                if (computedStatus == StatusBehind)
+                {
+                    var execRecipients = await _db.Users
+                        .Where(u => u.Role == RoleExecutive && u.IsActive && u.IsApproved && u.Id != userId)
+                        .Select(u => new { u.FullName, u.Email })
+                        .ToListAsync(cancellationToken);
+                    emailRecipients = emailRecipients.Concat(execRecipients).ToList();
+                }
+
+                var emailSubject = computedStatus == StatusBehind
+                    ? $"ALERT: {kpi.Name} is Behind Target — Action Required"
+                    : $"WARNING: {kpi.Name} is At Risk — Review Needed";
+
+                foreach (var recipient in emailRecipients)
+                {
+                    try
+                    {
+                        await _email.SendKpiAlertEmailAsync(
+                            recipient.Email, recipient.FullName,
+                            kpi.Name, computedStatus, model.Period, deptNameForEmail, cancellationToken);
+                    }
+                    catch { /* individual email failure must not block others */ }
+                }
+            }
+            catch { /* email alert failure must not block the log entry */ }
+        }
 
         TempData[TdSuccessMessage] = $"Entry saved. {kpi.Name} is {computedStatus} for {model.Period}.";
         return RedirectToAction(nameof(KPITracking));
@@ -1160,6 +1296,7 @@ public class HomeController : Controller
             Target        = model.Target,
             Description   = model.Description?.Trim(),
             IsActive      = model.IsActive,
+            Frequency     = model.Frequency,
             CreatedAt     = DateTime.UtcNow
         };
         _db.Kpis.Add(kpi);
@@ -1191,7 +1328,8 @@ public class HomeController : Controller
             Unit          = kpi.Unit,
             Target        = kpi.Target,
             Description   = kpi.Description,
-            IsActive      = kpi.IsActive
+            IsActive      = kpi.IsActive,
+            Frequency     = kpi.Frequency
         };
         return View(ViewKpiForm, await BuildKpiFormAsync(form, cancellationToken));
     }
@@ -1215,7 +1353,7 @@ public class HomeController : Controller
         kpi.Name = model.Name.Trim(); kpi.DepartmentId = model.DepartmentId;
         kpi.PerspectiveId = model.PerspectiveId; kpi.Unit = model.Unit.Trim();
         kpi.Target = model.Target; kpi.Description = model.Description?.Trim();
-        kpi.IsActive = model.IsActive;
+        kpi.IsActive = model.IsActive; kpi.Frequency = model.Frequency;
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -1614,6 +1752,63 @@ public class HomeController : Controller
         });
     }
 
+    // ── PDF Export — Executive Report ─────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> ExportExecutiveReport(CancellationToken cancellationToken = default)
+    {
+        if (!HasAccess(RoleAdmin, RoleAdministrator, RoleManager, RoleExecutive)) return Forbid();
+
+        // Re-use the same data-building logic as ExecutiveReporting
+        var periods = await _db.KpiLogEntries
+            .Select(e => e.Period).Distinct().OrderByDescending(p => p).ToListAsync(cancellationToken);
+        var selectedPeriod = periods.FirstOrDefault() ?? string.Empty;
+        var latestByKpi    = await GetLatestEntriesPerKpiAsync(cancellationToken);
+        var totalKpis      = await _db.Kpis.CountAsync(k => k.IsActive, cancellationToken);
+        var onTrack        = latestByKpi.Count(e => e.Status == StatusOnTrack);
+        var atRisk         = latestByKpi.Count(e => e.Status == StatusAtRisk);
+        var behind         = latestByKpi.Count(e => e.Status == StatusBehind);
+        var noData         = totalKpis - latestByKpi.Count;
+        var kpisWithEntries = latestByKpi.Count;
+        var overallPct     = kpisWithEntries == 0 ? 0 : (int)Math.Round((double)onTrack / kpisWithEntries * 100);
+
+        var kpiRows = await _db.Kpis
+            .Where(k => k.IsActive).Include(k => k.Department).Include(k => k.LogEntries)
+            .OrderBy(k => k.Department.Name).ThenBy(k => k.Name).ToListAsync(cancellationToken);
+        var latestDict = latestByKpi.ToDictionary(e => e.KpiId);
+        var execKpis   = kpiRows.Select(k => BuildExecKpiRow(k, latestDict)).ToList();
+
+        var kpisWithPerspective = await _db.Kpis
+            .Where(k => k.IsActive).Include(k => k.Perspective)
+            .Select(k => new { k.Id, PerspectiveName = k.Perspective.Name }).ToListAsync(cancellationToken);
+        var perspectiveOrder = new[] { "Financial", "Customer", "Internal Process", "Learning & Growth" };
+        var scorecards = BuildExecScorecards(perspectiveOrder,
+            kpisWithPerspective.Select(k => (k.Id, k.PerspectiveName)), latestDict);
+
+        var goalRows = await _db.StrategicGoals
+            .OrderBy(g => g.Status).ThenBy(g => g.Title)
+            .Select(g => new ExecGoalRowViewModel { Title = g.Title, Status = g.Status, TargetYear = g.TargetYear })
+            .ToListAsync(cancellationToken);
+
+        var model = new ExecutiveReportingViewModel
+        {
+            TotalKpis        = totalKpis,
+            OnTrack          = onTrack,
+            AtRisk           = atRisk,
+            Behind           = behind,
+            NoData           = noData,
+            OverallPct       = overallPct,
+            Kpis             = execKpis,
+            Scorecards       = scorecards,
+            Goals            = goalRows,
+            SelectedPeriod   = selectedPeriod,
+            AvailablePeriods = periods
+        };
+
+        var pdfBytes = _pdf.GenerateExecutiveReport(model);
+        var fileName = $"PeakMetrics-Executive-Report-{DateTime.Now:yyyy-MM-dd}.pdf";
+        return File(pdfBytes, "application/pdf", fileName);
+    }
+
     public async Task<IActionResult> Profile(CancellationToken cancellationToken = default)
     {
         ViewData[VdTitle] = "Profile";
@@ -1637,7 +1832,8 @@ public class HomeController : Controller
             DepartmentName = user.Department?.Name,
             LastLoginAt    = user.LastLoginAt.HasValue ? user.LastLoginAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt") : "Never",
             NewFullName    = user.FullName,
-            NewEmail       = user.Email
+            NewEmail       = user.Email,
+            NewPhoneNumber = user.PhoneNumber
         });
     }
 
@@ -1663,8 +1859,9 @@ public class HomeController : Controller
             return View(model);
 
         // Apply changes
-        user.FullName = model.NewFullName.Trim();
-        user.Email    = model.NewEmail.Trim();
+        user.FullName    = model.NewFullName.Trim();
+        user.Email       = model.NewEmail.Trim();
+        user.PhoneNumber = string.IsNullOrWhiteSpace(model.NewPhoneNumber) ? null : model.NewPhoneNumber.Trim();
 
         if (changingPassword && !string.IsNullOrWhiteSpace(model.NewPassword))
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword, workFactor: 11);
@@ -1740,10 +1937,11 @@ public class HomeController : Controller
     [HttpGet]
     public IActionResult ApiDocs() => View();
 
-    // ── Diagnostics (no auth — accessible at /Home/Diagnostics) ──────────────
+    // ── Diagnostics (Super Admin only — accessible at /Home/Diagnostics) ──────
     [HttpGet]
     public async Task<IActionResult> Diagnostics(CancellationToken cancellationToken = default)
     {
+        if (!HasAccess(RoleAdmin)) return Forbid();
         var checks = new System.Text.StringBuilder();
         checks.AppendLine("=== PeakMetrics Diagnostics ===");
         checks.AppendLine($"Time (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
@@ -1852,10 +2050,11 @@ public class HomeController : Controller
         return Content(checks.ToString(), "text/plain");
     }
 
-    // ── Apply migration manually (no auth — one-time use) ─────────────────────
+    // ── Apply migration manually (Super Admin only — one-time use) ───────────
     [HttpGet]
     public async Task<IActionResult> ApplyMigration(CancellationToken cancellationToken = default)
     {
+        if (!HasAccess(RoleAdmin)) return Forbid();
         var log = new System.Text.StringBuilder();
         log.AppendLine("=== ApplyMigration ===");
         log.AppendLine($"Time (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
@@ -2249,6 +2448,7 @@ public class HomeController : Controller
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password!, workFactor: 11),
                 Role         = model.Role,
                 DepartmentId = model.DepartmentId,
+                PhoneNumber  = string.IsNullOrWhiteSpace(model.PhoneNumber) ? null : model.PhoneNumber.Trim(),
                 IsActive     = model.IsActive,
                 CreatedAt    = DateTime.UtcNow,
                 // Set approval fields for manually created users (auto-approved)
@@ -2290,6 +2490,7 @@ public class HomeController : Controller
             if (user is null) return NotFound();
 
             // Administrator cannot edit Super Admin accounts
+            // Super Admin can edit any account including their own
             var actorRole = HttpContext.Session.GetString(SessionUserRole);
             if (actorRole == RoleAdministrator && user.Role == RoleAdmin) return Forbid();
 
@@ -2300,7 +2501,8 @@ public class HomeController : Controller
                 Email        = user.Email,
                 Role         = user.Role,
                 DepartmentId = user.DepartmentId,
-                IsActive     = user.IsActive
+                IsActive     = user.IsActive,
+                PhoneNumber  = user.PhoneNumber
             };
             return View(ViewUserForm, await BuildUserFormAsync(form, cancellationToken));
         }
@@ -2335,7 +2537,8 @@ public class HomeController : Controller
             }
 
             // Prevent assigning Super Admin role through the UI
-            if (model.Role == "Super Admin")
+            // (but allow editing an existing Super Admin account — role stays unchanged)
+            if (model.Role == "Super Admin" && user.Role != "Super Admin")
             {
                 ModelState.AddModelError(nameof(model.Role), "The Super Admin role cannot be assigned through User Management.");
                 return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
@@ -2347,6 +2550,7 @@ public class HomeController : Controller
             user.Role         = model.Role;
             user.DepartmentId = model.DepartmentId;
             user.IsActive     = model.IsActive;
+            user.PhoneNumber  = string.IsNullOrWhiteSpace(model.PhoneNumber) ? null : model.PhoneNumber.Trim();
 
             if (!string.IsNullOrWhiteSpace(model.Password))
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password, workFactor: 11);

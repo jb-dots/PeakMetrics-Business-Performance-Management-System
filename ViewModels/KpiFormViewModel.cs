@@ -24,8 +24,12 @@ public sealed class KpiFormViewModel
     [Range(0, double.MaxValue, ErrorMessage = "Target must be a positive number.")]
     public decimal Target { get; set; }
 
-    [MaxLength(100)]
+    [MaxLength(500)]
     public string? Description { get; set; }
+
+    /// <summary>Monthly | Quarterly | Annual</summary>
+    [Required(ErrorMessage = "Frequency is required.")]
+    public string Frequency { get; set; } = "Monthly";
 
     public bool IsActive { get; set; } = true;
 

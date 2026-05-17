@@ -38,6 +38,7 @@ public sealed class AppDbContext : DbContext
             e.HasIndex(u => u.Email).IsUnique();
             e.Property(u => u.PasswordHash).HasMaxLength(256).IsRequired();
             e.Property(u => u.Role).HasMaxLength(50).IsRequired();
+            e.Property(u => u.PhoneNumber).HasMaxLength(20);
 
             e.HasOne(u => u.Department)
              .WithMany(d => d.Users)

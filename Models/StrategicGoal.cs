@@ -18,7 +18,7 @@ public sealed class StrategicGoal
     /// <summary>Not Started | In Progress | Completed | Cancelled</summary>
     public string Status { get; set; } = "Not Started";
 
-    [Range(1, 9999, ErrorMessage = "Target year must be between 1 and 9999.")]
+    [Range(2000, 2100, ErrorMessage = "Target year must be between 2000 and 2100.")]
     public int? TargetYear { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

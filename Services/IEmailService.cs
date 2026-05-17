@@ -17,4 +17,10 @@ public interface IEmailService
 
     /// <summary>Sends a password reset email with a token link.</summary>
     Task SendPasswordResetEmailAsync(string toEmail, string toName, int userId, string token, string baseUrl, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends a KPI alert email when a KPI status changes to At Risk or Behind.
+    /// Sent to managers, admins, and super admins who should be notified.
+    /// </summary>
+    Task SendKpiAlertEmailAsync(string toEmail, string toName, string kpiName, string status, string period, string department, CancellationToken ct = default);
 }

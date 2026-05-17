@@ -20,11 +20,11 @@ public class HomeController : Controller
     private const string TdSuccessMessage = "SuccessMessage";
 
     // ── Role constants ────────────────────────────────────────────────────────
-    private const string RoleAdmin         = "Super Admin";
-    private const string RoleStaff         = "Staff";
-    private const string RoleAdministrator = "Administrator";
-    private const string RoleManager       = "Manager";
-    private const string RoleExecutive     = "Executive";
+    private const string RoleAdmin         = RoleAdmin;
+    private const string RoleStaff         = RoleStaff;
+    private const string RoleAdministrator = RoleAdministrator;
+    private const string RoleManager       = RoleManager;
+    private const string RoleExecutive     = RoleExecutive;
 
     // ── View name constants ───────────────────────────────────────────────────
     private const string ViewDashboard         = "Dashboard";
@@ -182,7 +182,7 @@ public class HomeController : Controller
         var adminName = HttpContext.Session.GetString(SessionUserName) ?? "Admin";
 
         // Assign role and department from pending fields
-        user.Role        = user.PendingRole ?? "Staff";
+        user.Role        = user.PendingRole ?? RoleStaff;
         user.IsApproved  = true;
         user.ApprovedAt  = DateTime.UtcNow;
         user.ApprovedById = adminId.ToString();
@@ -232,7 +232,7 @@ public class HomeController : Controller
 
         var userName    = user.FullName;
         var userEmail   = user.Email;
-        var userPhone   = user.PhoneNumber;
+
 
         _db.AuditLogs.Add(new AuditLog
         {
@@ -275,203 +275,96 @@ public class HomeController : Controller
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken cancellationToken)
     {
         ViewData[VdTitle] = "Login";
+        if (!ModelState.IsValid) return View(model);
 
-        if (!ModelState.IsValid)
-            return View(model);
-
-        // Load only the columns that existed before the lockout migration,
-        // so login works even if the migration hasn't applied yet on the host.
-        var userCore = await _db.Users
-            .Where(u => u.Email == model.Email && u.IsActive)
-            .Select(u => new
-            {
-                u.Id,
-                u.FullName,
-                u.Email,
-                u.PasswordHash,
-                u.Role
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var userCore = await _db.Users.Where(u => u.Email == model.Email && u.IsActive)
+            .Select(u => new { u.Id, u.FullName, u.Email, u.PasswordHash, u.Role }).FirstOrDefaultAsync(cancellationToken);
 
         if (userCore is null || !BCrypt.Net.BCrypt.Verify(model.Password, userCore.PasswordHash))
         {
-            // Try to record the failed attempt / lockout — but don't crash login if
-            // the new columns don't exist yet (migration pending on this host).
-            if (userCore is not null)
-            {
-                try
-                {
-                    var userForLockout = await _db.Users.FindAsync(new object[] { userCore.Id }, cancellationToken);
-                    if (userForLockout is not null)
-                    {
-                        userForLockout.FailedLoginAttempts = (userForLockout.FailedLoginAttempts ?? 0) + 1;
-
-                        if (userForLockout.FailedLoginAttempts >= 5)
-                        {
-                            userForLockout.LockoutEnd          = DateTime.UtcNow.AddMinutes(15);
-                            userForLockout.FailedLoginAttempts = 0;
-
-                            _db.AuditLogs.Add(new AuditLog
-                            {
-                                UserId     = userCore.Id,
-                                Action     = "AccountLocked",
-                                EntityType = "Auth",
-                                EntityId   = userCore.Id,
-                                Details    = $"{userCore.Email} account locked after too many failed attempts.",
-                                OccurredAt = DateTime.UtcNow
-                            });
-                            await _db.SaveChangesAsync(cancellationToken);
-
-                            ModelState.AddModelError(string.Empty,
-                                "Too many failed login attempts. Your account has been locked for 15 minutes. Please try again later.");
-                            return View(model);
-                        }
-
-                        _db.AuditLogs.Add(new AuditLog
-                        {
-                            UserId     = userCore.Id,
-                            Action     = "FailedLogin",
-                            EntityType = "Auth",
-                            EntityId   = userCore.Id,
-                            Details    = $"Failed login attempt for {userCore.Email}.",
-                            OccurredAt = DateTime.UtcNow
-                        });
-                        await _db.SaveChangesAsync(cancellationToken);
-                    }
-                }
-                catch
-                {
-                    // Lockout columns not yet migrated — log attempt without lockout tracking
-                    try
-                    {
-                        _db.AuditLogs.Add(new AuditLog
-                        {
-                            UserId     = userCore.Id,
-                            Action     = "FailedLogin",
-                            EntityType = "Auth",
-                            EntityId   = userCore.Id,
-                            Details    = $"Failed login attempt for {userCore.Email}.",
-                            OccurredAt = DateTime.UtcNow
-                        });
-                        await _db.SaveChangesAsync(cancellationToken);
-                    }
-                    catch { /* audit log failure must never block login */ }
-                }
-            }
-            else
-            {
-                try
-                {
-                    _db.AuditLogs.Add(new AuditLog
-                    {
-                        UserId     = null,
-                        Action     = "FailedLogin",
-                        EntityType = "Auth",
-                        Details    = $"Failed login attempt for {model.Email}.",
-                        OccurredAt = DateTime.UtcNow
-                    });
-                    await _db.SaveChangesAsync(cancellationToken);
-                }
-                catch { /* audit log failure must never block login */ }
-            }
-
-            ModelState.AddModelError(string.Empty, "Invalid email or password.");
+            var lockoutError = await ProcessFailedLoginAsync(userCore?.Id, model.Email, cancellationToken);
+            ModelState.AddModelError(string.Empty, lockoutError ?? "Invalid email or password.");
             return View(model);
         }
 
-        // Check lockout — only if columns exist (migration applied)
-        try
+        if (await IsUserLockedOutAsync(userCore.Id, cancellationToken))
         {
-            var userForLockoutCheck = await _db.Users.FindAsync(new object[] { userCore.Id }, cancellationToken);
-            if (userForLockoutCheck is not null
-                && userForLockoutCheck.LockoutEnd.HasValue
-                && userForLockoutCheck.LockoutEnd.Value > DateTime.UtcNow)
-            {
-                ModelState.AddModelError(string.Empty,
-                    "Too many failed login attempts. Your account has been locked for 15 minutes. Please try again later.");
-                return View(model);
-            }
+            ModelState.AddModelError(string.Empty, "Too many failed login attempts. Your account has been locked for 15 minutes. Please try again later.");
+            return View(model);
         }
-        catch { /* lockout columns not yet migrated — skip lockout check */ }
 
-        // Successful login
-        var parts    = userCore.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var initials = parts.Length >= 2
-            ? $"{parts[0][0]}{parts[^1][0]}"
-            : userCore.FullName[..Math.Min(2, userCore.FullName.Length)];
+        var approvalError = await CheckUserApprovalGateAsync(userCore.Id, cancellationToken);
+        if (approvalError != null)
+        {
+            HttpContext.Session.Clear();
+            ModelState.AddModelError(string.Empty, approvalError);
+            return View(model);
+        }
 
-        // ── Approval gate ─────────────────────────────────────────────────────
-        // Wrapped in try/catch so login degrades gracefully if the AddApprovalFields
-        // migration has not yet been applied on this host.
-        try
-        {
-            var fullUser = await _db.Users.FindAsync(new object[] { userCore.Id }, cancellationToken);
-            if (fullUser is not null)
-            {
-                if (!fullUser.EmailConfirmed)
-                {
-                    HttpContext.Session.Clear();
-                    ModelState.AddModelError(string.Empty, "Please verify your email before logging in.");
-                    return View(model);
-                }
-                if (!fullUser.IsApproved)
-                {
-                    HttpContext.Session.Clear();
-                    ModelState.AddModelError(string.Empty, "Your account is pending administrator approval.");
-                    return View(model);
-                }
-            }
-        }
-        catch
-        {
-            // AddApprovalFields migration not yet applied — skip gate, allow login
-        }
+        var parts = userCore.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = parts.Length >= 2 ? $"{parts[0][0]}{parts[^1][0]}" : userCore.FullName[..Math.Min(2, userCore.FullName.Length)];
 
         HttpContext.Session.SetInt32(SessionUserId,        userCore.Id);
         HttpContext.Session.SetString(SessionUserName,     userCore.FullName);
         HttpContext.Session.SetString(SessionUserRole,     userCore.Role);
         HttpContext.Session.SetString(SessionUserInitials, initials.ToUpperInvariant());
 
-        // Update LastLoginAt — always safe (column existed before our changes)
-        try
-        {
-            await _db.Users
-                .Where(u => u.Id == userCore.Id)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(u => u.LastLoginAt,         DateTime.UtcNow)
-                    .SetProperty(u => u.FailedLoginAttempts, 0)
-                    .SetProperty(u => u.LockoutEnd,          (DateTime?)null),
-                cancellationToken);
-        }
-        catch
-        {
-            // Lockout columns not yet migrated — fall back to updating only LastLoginAt
-            await _db.Users
-                .Where(u => u.Id == userCore.Id)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(u => u.LastLoginAt, DateTime.UtcNow),
-                cancellationToken);
-        }
-
-        try
-        {
-            _db.AuditLogs.Add(new AuditLog
-            {
-                UserId     = userCore.Id,
-                Action     = "Login",
-                EntityType = "Auth",
-                EntityId   = userCore.Id,
-                Details    = $"{userCore.FullName} signed in successfully.",
-                OccurredAt = DateTime.UtcNow
-            });
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-        catch { /* audit log failure must never block login */ }
-
+        await UpdateLastLoginAsync(userCore.Id, userCore.FullName, cancellationToken);
         return RedirectToAction(nameof(Dashboard));
     }
 
-    // ── Logout ────────────────────────────────────────────────────────────────
+    private async Task<string?> ProcessFailedLoginAsync(int? userId, string email, CancellationToken cancellationToken)
+    {
+        if (userId.HasValue)
+        {
+            try {
+                var user = await _db.Users.FindAsync(new object[] { userId.Value }, cancellationToken);
+                if (user is not null) {
+                    user.FailedLoginAttempts = (user.FailedLoginAttempts ?? 0) + 1;
+                    if (user.FailedLoginAttempts >= 5) {
+                        user.LockoutEnd = DateTime.UtcNow.AddMinutes(15);
+                        user.FailedLoginAttempts = 0;
+                        _db.AuditLogs.Add(new AuditLog { UserId = userId, Action = "AccountLocked", EntityType = "Auth", EntityId = userId, Details = $"{email} account locked after too many failed attempts.", OccurredAt = DateTime.UtcNow });
+                        await _db.SaveChangesAsync(cancellationToken);
+                        return "Too many failed login attempts. Your account has been locked for 15 minutes. Please try again later.";
+                    }
+                    _db.AuditLogs.Add(new AuditLog { UserId = userId, Action = "FailedLogin", EntityType = "Auth", EntityId = userId, Details = $"Failed login attempt for {email}.", OccurredAt = DateTime.UtcNow });
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+            } catch {
+                try { _db.AuditLogs.Add(new AuditLog { UserId = userId, Action = "FailedLogin", EntityType = "Auth", EntityId = userId, Details = $"Failed login attempt for {email}.", OccurredAt = DateTime.UtcNow }); await _db.SaveChangesAsync(cancellationToken); } catch { }
+            }
+        }
+        else
+        {
+            try { _db.AuditLogs.Add(new AuditLog { UserId = null, Action = "FailedLogin", EntityType = "Auth", Details = $"Failed login attempt for {email}.", OccurredAt = DateTime.UtcNow }); await _db.SaveChangesAsync(cancellationToken); } catch { }
+        }
+        return null;
+    }
+
+    private async Task<bool> IsUserLockedOutAsync(int userId, CancellationToken cancellationToken)
+    {
+        try { var user = await _db.Users.FindAsync(new object[] { userId }, cancellationToken); return user is not null && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow; } catch { return false; }
+    }
+
+    private async Task<string?> CheckUserApprovalGateAsync(int userId, CancellationToken cancellationToken)
+    {
+        try {
+            var fullUser = await _db.Users.FindAsync(new object[] { userId }, cancellationToken);
+            if (fullUser is not null) {
+                if (!fullUser.EmailConfirmed) return "Please verify your email before logging in.";
+                if (!fullUser.IsApproved) return "Your account is pending administrator approval.";
+            }
+        } catch { }
+        return null;
+    }
+
+    private async Task UpdateLastLoginAsync(int userId, string fullName, CancellationToken cancellationToken)
+    {
+        try { await _db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTime.UtcNow).SetProperty(u => u.FailedLoginAttempts, 0).SetProperty(u => u.LockoutEnd, (DateTime?)null), cancellationToken); }
+        catch { try { await _db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTime.UtcNow), cancellationToken); } catch { } }
+        try { _db.AuditLogs.Add(new AuditLog { UserId = userId, Action = "Login", EntityType = "Auth", EntityId = userId, Details = $"{fullName} signed in successfully.", OccurredAt = DateTime.UtcNow }); await _db.SaveChangesAsync(cancellationToken); } catch { }
+    }
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
@@ -940,7 +833,7 @@ public class HomeController : Controller
         bool showArchived = false,
         CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Administrator", "Manager", "Staff", "Executive")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator, RoleManager, RoleStaff, RoleExecutive)) return Forbid();
         ViewData[VdTitle] = "KPI Tracking";
         ViewBag.ShowArchived = showArchived;
 
@@ -1011,7 +904,8 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> KPILogEntry(int? kpiId, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Manager", "Staff")) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        if (!HasAccess(RoleAdmin, RoleManager, RoleStaff)) return Forbid();
         ViewData[VdTitle] = "KPI Log Entry";
         ViewBag.Kpis = await GetKpiDetailsAsync(cancellationToken);
         return View(new KpiLogEntryViewModel
@@ -1027,198 +921,59 @@ public class HomeController : Controller
     {
         ViewData[VdTitle] = "KPI Log Entry";
         ViewBag.Kpis = await GetKpiDetailsAsync(cancellationToken);
-
-        if (!ModelState.IsValid)
-            return View(model);
+        if (!ModelState.IsValid) return View(model);
 
         var kpi = await _db.Kpis.FindAsync(new object[] { model.KpiId }, cancellationToken);
-        if (kpi is null)
-        {
-            ModelState.AddModelError(nameof(model.KpiId), "Selected KPI not found.");
-            return View(model);
-        }
+        if (kpi is null) { ModelState.AddModelError(nameof(model.KpiId), "Selected KPI not found."); return View(model); }
 
         var computedStatus = ComputeStatus(kpi, model.ActualValue);
-        var userId         = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
+        var userId = HttpContext.Session.GetInt32(SessionUserId) ?? 1;
 
-        _db.KpiLogEntries.Add(new KpiLogEntry
-        {
-            KpiId          = model.KpiId,
-            LoggedByUserId = userId,
-            ActualValue    = model.ActualValue,
-            Status         = computedStatus,
-            Notes          = model.Notes?.Trim(),
-            LoggedAt       = model.LoggedAt.ToUniversalTime(),
-            Period         = model.Period
-        });
-
-        // Keep Kpi.Status in sync with the latest computed status
+        _db.KpiLogEntries.Add(new KpiLogEntry { KpiId = model.KpiId, LoggedByUserId = userId, ActualValue = model.ActualValue, Status = computedStatus, Notes = model.Notes?.Trim(), LoggedAt = model.LoggedAt.ToUniversalTime(), Period = model.Period });
         kpi.Status = computedStatus;
 
-        // ── Multi-role notifications for At Risk / Behind KPIs ─────────────
-        if (computedStatus != StatusOnTrack)
-        {
-            try
-            {
-                var loggerName = (await _db.Users
-                    .Where(u => u.Id == userId)
-                    .Select(u => u.FullName)
-                    .FirstOrDefaultAsync(cancellationToken)) ?? "Unknown";
+        if (computedStatus != StatusOnTrack) await GenerateKpiAlertNotificationsAsync(kpi, computedStatus, model.ActualValue, userId, cancellationToken);
 
-                var deptName = kpi.Department?.Name
-                    ?? (await _db.Departments.FindAsync(new object[] { kpi.DepartmentId }, cancellationToken))?.Name
-                    ?? "Unknown";
-
-                // Collect user IDs and names for notification — use projections to avoid
-                // loading full AppUser entities (which may reference columns not yet migrated)
-                var notifyTargets = new List<(int Id, string FullName)>();
-
-                // 1. The logger themselves
-                notifyTargets.Add((userId, loggerName));
-
-                // 2. All Managers in the same department as the KPI
-                var departmentManagers = await _db.Users
-                    .Where(u => u.Role == RoleManager
-                        && u.DepartmentId == kpi.DepartmentId
-                        && u.IsActive
-                        && u.IsApproved
-                        && u.Id != userId)
-                    .Select(u => new { u.Id, u.FullName })
-                    .ToListAsync(cancellationToken);
-                notifyTargets.AddRange(departmentManagers.Select(u => (u.Id, u.FullName)));
-
-                // 3. All Administrators
-                var administrators = await _db.Users
-                    .Where(u => u.Role == RoleAdministrator
-                        && u.IsActive
-                        && u.IsApproved
-                        && u.Id != userId)
-                    .Select(u => new { u.Id, u.FullName })
-                    .ToListAsync(cancellationToken);
-                notifyTargets.AddRange(administrators.Select(u => (u.Id, u.FullName)));
-
-                // 4. All Super Admins
-                var superAdmins = await _db.Users
-                    .Where(u => u.Role == RoleAdmin
-                        && u.IsActive
-                        && u.IsApproved
-                        && u.Id != userId)
-                    .Select(u => new { u.Id, u.FullName })
-                    .ToListAsync(cancellationToken);
-                notifyTargets.AddRange(superAdmins.Select(u => (u.Id, u.FullName)));
-
-                // 5. Executives — only for Behind status
-                if (computedStatus == StatusBehind)
-                {
-                    var executives = await _db.Users
-                        .Where(u => u.Role == RoleExecutive
-                            && u.IsActive
-                            && u.IsApproved
-                            && u.Id != userId)
-                        .Select(u => new { u.Id, u.FullName })
-                        .ToListAsync(cancellationToken);
-                    notifyTargets.AddRange(executives.Select(u => (u.Id, u.FullName)));
-                }
-
-                // Remove duplicates
-                notifyTargets = notifyTargets
-                    .GroupBy(u => u.Id)
-                    .Select(g => g.First())
-                    .ToList();
-
-                // Create a notification record for each user
-                foreach (var target in notifyTargets)
-                {
-                    _db.Notifications.Add(new Notification
-                    {
-                        UserId    = target.Id,
-                        KpiId     = kpi.Id,
-                        Title     = computedStatus == StatusBehind
-                            ? $"KPI Alert: {kpi.Name} is Behind Target"
-                            : $"KPI Warning: {kpi.Name} is At Risk",
-                        Message   = computedStatus == StatusBehind
-                            ? $"{kpi.Name} in {deptName} department is Behind target. Actual: {FormatValue(model.ActualValue, kpi.Unit)} vs Target: {FormatValue(kpi.Target, kpi.Unit)}. Logged by {loggerName}."
-                            : $"{kpi.Name} in {deptName} department is At Risk. Actual: {FormatValue(model.ActualValue, kpi.Unit)} vs Target: {FormatValue(kpi.Target, kpi.Unit)}. Logged by {loggerName}.",
-                        Type      = computedStatus == StatusBehind ? "Alert" : "Warning",
-                        IsRead    = false,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-            }
-            catch { /* notification creation failure must not block the log entry */ }
-        }
-
-        _db.AuditLogs.Add(new AuditLog
-        {
-            UserId     = userId,
-            Action     = "Logged KPI Entry",
-            EntityType = "KpiLogEntry",
-            Details    = $"{kpi.Name} — Actual: {model.ActualValue} {kpi.Unit} | Status: {computedStatus} | Period: {model.Period}",
-            OccurredAt = DateTime.UtcNow
-        });
-
+        _db.AuditLogs.Add(new AuditLog { UserId = userId, Action = "Logged KPI Entry", EntityType = "KpiLogEntry", Details = $"{kpi.Name} — Actual: {model.ActualValue} {kpi.Unit} | Status: {computedStatus} | Period: {model.Period}", OccurredAt = DateTime.UtcNow });
         await _db.SaveChangesAsync(cancellationToken);
 
-        // ── Email alert for At Risk / Behind KPIs ─────────────────────────────
-        if (computedStatus != StatusOnTrack)
-        {
-            try
-            {
-                var deptNameForEmail = kpi.Department?.Name
-                    ?? (await _db.Departments.FindAsync(new object[] { kpi.DepartmentId }, cancellationToken))?.Name
-                    ?? "Unknown";
-
-                // Notify: managers of the KPI's department + all Admins + Super Admins
-                // + Executives (Behind only) — excluding the person who just logged
-                var emailRecipientsQuery = _db.Users
-                    .Where(u => u.IsActive
-                             && u.IsApproved
-                             && u.Id != userId
-                             && (
-                                 (u.DepartmentId == kpi.DepartmentId && u.Role == RoleManager)
-                                 || u.Role == RoleAdmin
-                                 || u.Role == RoleAdministrator
-                             ));
-
-                var emailRecipients = await emailRecipientsQuery
-                    .Select(u => new { u.FullName, u.Email })
-                    .ToListAsync(cancellationToken);
-
-                // Add Executives only for Behind status
-                if (computedStatus == StatusBehind)
-                {
-                    var execRecipients = await _db.Users
-                        .Where(u => u.Role == RoleExecutive && u.IsActive && u.IsApproved && u.Id != userId)
-                        .Select(u => new { u.FullName, u.Email })
-                        .ToListAsync(cancellationToken);
-                    emailRecipients = emailRecipients.Concat(execRecipients).ToList();
-                }
-
-                var emailSubject = computedStatus == StatusBehind
-                    ? $"ALERT: {kpi.Name} is Behind Target — Action Required"
-                    : $"WARNING: {kpi.Name} is At Risk — Review Needed";
-
-                foreach (var recipient in emailRecipients)
-                {
-                    try
-                    {
-                        await _email.SendKpiAlertEmailAsync(
-                            recipient.Email, recipient.FullName,
-                            kpi.Name, computedStatus, model.Period, deptNameForEmail, cancellationToken);
-                    }
-                    catch { /* individual email failure must not block others */ }
-                }
-            }
-            catch { /* email alert failure must not block the log entry */ }
-        }
+        if (computedStatus != StatusOnTrack) await SendKpiAlertEmailsAsync(kpi, computedStatus, model, userId, cancellationToken);
 
         TempData[TdSuccessMessage] = $"Entry saved. {kpi.Name} is {computedStatus} for {model.Period}.";
         return RedirectToAction(nameof(KPITracking));
     }
 
+    private async Task GenerateKpiAlertNotificationsAsync(Kpi kpi, string computedStatus, decimal actualValue, int userId, CancellationToken cancellationToken)
+    {
+        try {
+            var loggerName = (await _db.Users.Where(u => u.Id == userId).Select(u => u.FullName).FirstOrDefaultAsync(cancellationToken)) ?? "Unknown";
+            var deptName = kpi.Department?.Name ?? (await _db.Departments.FindAsync(new object[] { kpi.DepartmentId }, cancellationToken))?.Name ?? "Unknown";
+            var notifyTargets = new List<(int Id, string FullName)>();
+            notifyTargets.Add((userId, loggerName));
+            notifyTargets.AddRange(await _db.Users.Where(u => u.Role == RoleManager && u.DepartmentId == kpi.DepartmentId && u.IsActive && u.IsApproved && u.Id != userId).Select(u => new { u.Id, u.FullName }).AsEnumerable().Select(u => (u.Id, u.FullName)).ToListAsync(cancellationToken));
+            notifyTargets.AddRange(await _db.Users.Where(u => (u.Role == RoleAdministrator || u.Role == RoleAdmin) && u.IsActive && u.IsApproved && u.Id != userId).Select(u => new { u.Id, u.FullName }).AsEnumerable().Select(u => (u.Id, u.FullName)).ToListAsync(cancellationToken));
+            if (computedStatus == StatusBehind) notifyTargets.AddRange(await _db.Users.Where(u => u.Role == RoleExecutive && u.IsActive && u.IsApproved && u.Id != userId).Select(u => new { u.Id, u.FullName }).AsEnumerable().Select(u => (u.Id, u.FullName)).ToListAsync(cancellationToken));
+            foreach (var target in notifyTargets.GroupBy(u => u.Id).Select(g => g.First()))
+            {
+                _db.Notifications.Add(new Notification { UserId = target.Id, KpiId = kpi.Id, Title = computedStatus == StatusBehind ? $"KPI Alert: {kpi.Name} is Behind Target" : $"KPI Warning: {kpi.Name} is At Risk", Message = $"{kpi.Name} in {deptName} department is {computedStatus}. Actual: {actualValue} vs Target: {kpi.Target}. Logged by {loggerName}.", Type = computedStatus == StatusBehind ? "Alert" : "Warning", IsRead = false, CreatedAt = DateTime.UtcNow });
+            }
+        } catch { }
+    }
+
+    private async Task SendKpiAlertEmailsAsync(Kpi kpi, string computedStatus, KpiLogEntryViewModel model, int userId, CancellationToken cancellationToken)
+    {
+        try {
+            var deptNameForEmail = kpi.Department?.Name ?? (await _db.Departments.FindAsync(new object[] { kpi.DepartmentId }, cancellationToken))?.Name ?? "Unknown";
+            var emailRecipientsQuery = _db.Users.Where(u => u.IsActive && u.IsApproved && u.Id != userId && ((u.DepartmentId == kpi.DepartmentId && u.Role == RoleManager) || u.Role == RoleAdmin || u.Role == RoleAdministrator));
+            var emailRecipients = await emailRecipientsQuery.Select(u => new { u.FullName, u.Email }).ToListAsync(cancellationToken);
+            if (computedStatus == StatusBehind) emailRecipients.AddRange(await _db.Users.Where(u => u.Role == RoleExecutive && u.IsActive && u.IsApproved && u.Id != userId).Select(u => new { u.FullName, u.Email }).ToListAsync(cancellationToken));
+            foreach (var r in emailRecipients) { try { await _email.SendKpiAlertEmailAsync(r.Email, r.FullName, kpi.Name, computedStatus, model.Period, deptNameForEmail, cancellationToken); } catch { } }
+        } catch { }
+    }
     [HttpGet]
     public async Task<IActionResult> KpiDetail(int id, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid) return BadRequest();
         var kpi = await _db.Kpis
             .Where(k => k.Id == id && k.IsActive)
             .Include(k => k.Department)
@@ -1315,6 +1070,7 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> KpiEdit(int id, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid) return BadRequest();
         ViewData[VdTitle] = "Edit KPI";
         if (!CanManageKpis()) return RedirectToAction(nameof(Dashboard));
 
@@ -1395,7 +1151,7 @@ public class HomeController : Controller
     // ── Other pages ───────────────────────────────────────────────────────────
     public async Task<IActionResult> BalancedScorecard(CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Manager", "Staff", "Executive")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleManager, RoleStaff, RoleExecutive)) return Forbid();
         ViewData[VdTitle] = "Balanced Scorecards";
 
         var kpis = await _db.Kpis
@@ -1440,7 +1196,8 @@ public class HomeController : Controller
         int months = 6,
         CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Manager", "Executive")) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        if (!HasAccess(RoleAdmin, RoleManager, RoleExecutive)) return Forbid();
         ViewData[VdTitle] = "Performance Analytics";
 
         var selectedDept   = string.IsNullOrWhiteSpace(department) ? "All" : department.Trim();
@@ -1537,7 +1294,8 @@ public class HomeController : Controller
         bool showArchived = false,
         CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Manager", "Executive")) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        if (!HasAccess(RoleAdmin, RoleManager, RoleExecutive)) return Forbid();
         ViewData[VdTitle] = "Strategic Planning";
         ViewBag.ShowArchived = showArchived;
 
@@ -1565,7 +1323,7 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> StrategicGoalCreate(CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Manager")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleManager)) return Forbid();
         ViewData[VdTitle] = "Add Strategic Goal";
         return View(ViewStrategicGoalForm, await BuildGoalFormAsync(new StrategicGoalFormViewModel(), cancellationToken));
     }
@@ -1574,7 +1332,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> StrategicGoalCreate(StrategicGoalFormViewModel model, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Manager")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleManager)) return Forbid();
         ViewData[VdTitle] = "Add Strategic Goal";
 
         if (!ModelState.IsValid)
@@ -1606,7 +1364,8 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> StrategicGoalEdit(int id, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Manager")) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        if (!HasAccess(RoleAdmin, RoleManager)) return Forbid();
         ViewData[VdTitle] = "Edit Strategic Goal";
 
         var goal = await _db.StrategicGoals.FindAsync(new object[] { id }, cancellationToken);
@@ -1627,7 +1386,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> StrategicGoalEdit(StrategicGoalFormViewModel model, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Manager")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleManager)) return Forbid();
         ViewData[VdTitle] = "Edit Strategic Goal";
 
         if (!ModelState.IsValid)
@@ -1659,7 +1418,7 @@ public class HomeController : Controller
     public async Task<IActionResult> StrategicGoalArchive(int id, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid) return BadRequest();
-        if (!HasAccess("Super Admin", "Manager")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleManager)) return Forbid();
 
         var goal = await _db.StrategicGoals.FindAsync(new object[] { id }, cancellationToken);
         if (goal is null) return NotFound();
@@ -1684,7 +1443,7 @@ public class HomeController : Controller
 
     public async Task<IActionResult> ExecutiveReporting(CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Administrator", "Manager", "Executive")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator, RoleManager, RoleExecutive)) return Forbid();
         ViewData[VdTitle] = "Executive Reporting";
 
         // Build available periods from actual log entries
@@ -1949,10 +1708,60 @@ public class HomeController : Controller
         var checks = new System.Text.StringBuilder();
         checks.AppendLine("=== PeakMetrics Diagnostics ===");
         checks.AppendLine($"Time (UTC): {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
-        checks.AppendLine($"Environment: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}");
+        checks.AppendLine($"Environment: {Environment.GetEnvironmentVariable(""ASPNETCORE_ENVIRONMENT"") ?? ""Production""}");
         checks.AppendLine();
 
-        // ── DB connection ──────────────────────────────────────────────────
+        await CheckDatabaseConnectionAsync(checks, cancellationToken);
+        await CheckSchemaMigrationsAsync(checks, cancellationToken);
+        await CheckSeededAccountsAsync(checks, cancellationToken);
+        await CheckPendingRegistrationsAsync(checks, cancellationToken);
+        CheckEmailSettings(checks);
+        await CheckMigrationHistoryAsync(checks, cancellationToken);
+
+        return Content(checks.ToString(), "text/plain");
+    }
+
+    private async Task CheckDatabaseConnectionAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
+        checks.AppendLine("--- Database ---");
+        try { checks.AppendLine($"Connection: {(await _db.Database.CanConnectAsync(cancellationToken) ? "OK" : "FAILED")}"); } catch (Exception ex) { checks.AppendLine($"Connection: FAILED — {ex.Message}"); }
+    }
+
+    private async Task CheckSchemaMigrationsAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
+        checks.AppendLine("\n--- Schema ---");
+        foreach (var col in new[] { "IsApproved", "EmailConfirmed", "ConfirmationToken", "PendingRole", "PendingDepartmentId", "ApprovedAt", "ApprovedById" })
+        {
+            try { var exists = (await _db.Database.SqlQueryRaw<int>($"SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = '{col}'").ToListAsync(cancellationToken)).FirstOrDefault() > 0; checks.AppendLine($"  Users.{col}: {(exists ? "EXISTS" : "MISSING")}"); } catch (Exception ex) { checks.AppendLine($"  Users.{col}: ERROR — {ex.Message}"); }
+        }
+    }
+
+    private async Task CheckSeededAccountsAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
+        checks.AppendLine("\n--- Seeded Accounts ---");
+        try { foreach (var u in await _db.Users.Where(u => u.Id <= 6).Select(u => new { u.Id, u.Email, u.IsApproved, u.EmailConfirmed }).ToListAsync(cancellationToken)) checks.AppendLine($"  [{u.Id}] {u.Email} — IsApproved={u.IsApproved}, EmailConfirmed={u.EmailConfirmed}"); } catch (Exception ex) { checks.AppendLine($"  ERROR: {ex.Message}"); }
+    }
+
+    private async Task CheckPendingRegistrationsAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
+        checks.AppendLine("\n--- Pending Registrations ---");
+        try { foreach (var u in await _db.Users.Where(u => u.Id > 6 && !u.EmailConfirmed).Select(u => new { u.Id, u.Email, u.ConfirmationToken, u.CreatedAt }).ToListAsync(cancellationToken)) checks.AppendLine($"  [{u.Id}] {u.Email} — Token={(u.ConfirmationToken != null ? "SET" : "NULL")} CreatedAt={u.CreatedAt:yyyy-MM-dd HH:mm}"); } catch (Exception ex) { checks.AppendLine($"  ERROR: {ex.Message}"); }
+    }
+
+    private void CheckEmailSettings(System.Text.StringBuilder checks)
+    {
+        checks.AppendLine("\n--- Email Settings ---");
+        try { var config = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(); checks.AppendLine($"  SmtpHost: {config["EmailSettings:SmtpHost"]} \n  SmtpPass: {(string.IsNullOrWhiteSpace(config["EmailSettings:SmtpPass"]) ? "EMPTY" : "SET")}"); } catch (Exception ex) { checks.AppendLine($"  ERROR: {ex.Message}"); }
+    }
+
+    private async Task CheckMigrationHistoryAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
+        checks.AppendLine("\n--- Applied Migrations ---");
+        try { foreach (var m in await _db.Database.SqlQueryRaw<string>("SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId").ToListAsync(cancellationToken)) checks.AppendLine($"  {m}"); } catch (Exception ex) { checks.AppendLine($"  ERROR: {ex.Message}"); }
+    }
+
+    private async Task CheckDatabaseConnectionAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
         checks.AppendLine("--- Database ---");
         try
         {
@@ -1963,8 +1772,10 @@ public class HomeController : Controller
         {
             checks.AppendLine($"Connection: FAILED — {ex.Message}");
         }
+    }
 
-        // ── Check new columns exist ────────────────────────────────────────
+    private async Task CheckSchemaMigrationsAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
         checks.AppendLine();
         checks.AppendLine("--- Schema (AddApprovalFields migration) ---");
         var columns = new[] { "IsApproved", "EmailConfirmed", "ConfirmationToken", "PendingRole", "PendingDepartmentId", "ApprovedAt", "ApprovedById" };
@@ -1981,52 +1792,50 @@ public class HomeController : Controller
                 checks.AppendLine($"  Users.{col}: ERROR — {ex.Message}");
             }
         }
+    }
 
-        // ── Seeded account approval status ────────────────────────────────
+    private async Task CheckSeededAccountsAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
         checks.AppendLine();
         checks.AppendLine("--- Seeded Accounts ---");
         try
         {
-            var seeded = await _db.Users
-                .Where(u => u.Id <= 6)
-                .Select(u => new { u.Id, u.Email, u.IsApproved, u.EmailConfirmed })
-                .ToListAsync(cancellationToken);
-            foreach (var u in seeded)
-                checks.AppendLine($"  [{u.Id}] {u.Email} — IsApproved={u.IsApproved}, EmailConfirmed={u.EmailConfirmed}");
+            var seeded = await _db.Users.Where(u => u.Id <= 6).Select(u => new { u.Id, u.Email, u.IsApproved, u.EmailConfirmed }).ToListAsync(cancellationToken);
+            foreach (var u in seeded) checks.AppendLine($"  [{u.Id}] {u.Email} — IsApproved={u.IsApproved}, EmailConfirmed={u.EmailConfirmed}");
         }
         catch (Exception ex)
         {
             checks.AppendLine($"  ERROR reading users: {ex.Message}");
         }
+    }
 
-        // ── Pending registrations ─────────────────────────────────────────
+    private async Task CheckPendingRegistrationsAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
         checks.AppendLine();
         checks.AppendLine("--- Pending Registrations (EmailConfirmed=false, not seeded) ---");
         try
         {
-            var pending = await _db.Users
-                .Where(u => u.Id > 6 && !u.EmailConfirmed)
-                .Select(u => new { u.Id, u.Email, u.IsApproved, u.EmailConfirmed, u.ConfirmationToken, u.CreatedAt })
-                .ToListAsync(cancellationToken);
-            if (!pending.Any())
-                checks.AppendLine("  None");
-            foreach (var u in pending)
-                checks.AppendLine($"  [{u.Id}] {u.Email} — Token={(u.ConfirmationToken != null ? "SET" : "NULL")} CreatedAt={u.CreatedAt:yyyy-MM-dd HH:mm}");
+            var pending = await _db.Users.Where(u => u.Id > 6 && !u.EmailConfirmed).Select(u => new { u.Id, u.Email, u.IsApproved, u.EmailConfirmed, u.ConfirmationToken, u.CreatedAt }).ToListAsync(cancellationToken);
+            if (!pending.Any()) checks.AppendLine("  None");
+            foreach (var u in pending) checks.AppendLine($"  [{u.Id}] {u.Email} — Token={(u.ConfirmationToken != null ? "SET" : "NULL")} CreatedAt={u.CreatedAt:yyyy-MM-dd HH:mm}");
         }
         catch (Exception ex)
         {
             checks.AppendLine($"  ERROR: {ex.Message}");
         }
+    }
 
-        // ── Email settings ────────────────────────────────────────────────
+    private void CheckEmailSettings(System.Text.StringBuilder checks)
+    {
         checks.AppendLine();
         checks.AppendLine("--- Email Settings ---");
         try
         {
-            var smtpHost  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpHost"];
-            var smtpPort  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpPort"];
-            var smtpUser  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpUser"];
-            var smtpPass  = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["EmailSettings:SmtpPass"];
+            var config = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+            var smtpHost  = config["EmailSettings:SmtpHost"];
+            var smtpPort  = config["EmailSettings:SmtpPort"];
+            var smtpUser  = config["EmailSettings:SmtpUser"];
+            var smtpPass  = config["EmailSettings:SmtpPass"];
             checks.AppendLine($"  SmtpHost: {smtpHost ?? "(not set)"}");
             checks.AppendLine($"  SmtpPort: {smtpPort ?? "(not set)"}");
             checks.AppendLine($"  SmtpUser: {smtpUser ?? "(not set)"}");
@@ -2036,22 +1845,21 @@ public class HomeController : Controller
         {
             checks.AppendLine($"  ERROR: {ex.Message}");
         }
+    }
 
-        // ── Migration history ─────────────────────────────────────────────
+    private async Task CheckMigrationHistoryAsync(System.Text.StringBuilder checks, CancellationToken cancellationToken)
+    {
         checks.AppendLine();
         checks.AppendLine("--- Applied Migrations ---");
         try
         {
-            var applied = await _db.Database.GetAppliedMigrationsAsync(cancellationToken);
-            foreach (var m in applied)
-                checks.AppendLine($"  {m}");
+            var migrations = await _db.Database.SqlQueryRaw<string>("SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId").ToListAsync(cancellationToken);
+            foreach (var m in migrations) checks.AppendLine($"  {m}");
         }
         catch (Exception ex)
         {
-            checks.AppendLine($"  ERROR: {ex.Message}");
+            checks.AppendLine($"  ERROR reading __EFMigrationsHistory (table might not exist yet): {ex.Message}");
         }
-
-        return Content(checks.ToString(), "text/plain");
     }
 
     // ── Apply migration manually (Super Admin only — one-time use) ───────────
@@ -2195,7 +2003,8 @@ public class HomeController : Controller
         bool showArchived = false,
         CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Department Management";
         ViewBag.ShowArchived = showArchived;
 
@@ -2220,7 +2029,7 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> DepartmentCreate()
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Add Department";
         return View(ViewDepartmentForm, new DepartmentFormViewModel());
     }
@@ -2229,7 +2038,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DepartmentCreate(DepartmentFormViewModel model, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Add Department";
 
         if (!ModelState.IsValid)
@@ -2264,7 +2073,8 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> DepartmentEdit(int id, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Edit Department";
 
         var dept = await _db.Departments.FindAsync(new object[] { id }, cancellationToken);
@@ -2282,7 +2092,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DepartmentEdit(DepartmentFormViewModel model, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Edit Department";
 
         if (!ModelState.IsValid)
@@ -2319,7 +2129,7 @@ public class HomeController : Controller
     public async Task<IActionResult> DepartmentDelete(int id, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid) return BadRequest();
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
 
         var dept = await _db.Departments
             .Include(d => d.Users)
@@ -2352,7 +2162,7 @@ public class HomeController : Controller
     public async Task<IActionResult> DepartmentArchive(int id, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid) return BadRequest();
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
 
         var dept = await _db.Departments.FindAsync(new object[] { id }, cancellationToken);
         if (dept is null) return NotFound();
@@ -2378,7 +2188,7 @@ public class HomeController : Controller
     // ── User Management ───────────────────────────────────────────────────────
     public async Task<IActionResult> UserManagement(CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "User Management";
 
         var users = await _db.Users
@@ -2403,7 +2213,7 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> UserCreate(CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Create User";
         
         try
@@ -2421,7 +2231,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UserCreate(UserFormViewModel model, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Create User";
 
         try
@@ -2431,7 +2241,7 @@ public class HomeController : Controller
                 ModelState.AddModelError(nameof(model.Password), "Password is required when creating a user.");
 
             // Prevent assigning Super Admin role through the UI
-            if (model.Role == "Super Admin")
+            if (model.Role == RoleAdmin)
             {
                 ModelState.AddModelError(nameof(model.Role), "The Super Admin role cannot be assigned through User Management.");
             }
@@ -2487,7 +2297,8 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> UserEdit(int id, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!ModelState.IsValid) return BadRequest();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Edit User";
 
         try
@@ -2523,7 +2334,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UserEdit(UserFormViewModel model, CancellationToken cancellationToken)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "Edit User";
 
         try
@@ -2544,7 +2355,7 @@ public class HomeController : Controller
 
             // Prevent assigning Super Admin role through the UI
             // (but allow editing an existing Super Admin account — role stays unchanged)
-            if (model.Role == "Super Admin" && user.Role != "Super Admin")
+            if (model.Role == RoleAdmin && user.Role != RoleAdmin)
             {
                 ModelState.AddModelError(nameof(model.Role), "The Super Admin role cannot be assigned through User Management.");
                 return View(ViewUserForm, await BuildUserFormAsync(model, cancellationToken));
@@ -2587,7 +2398,7 @@ public class HomeController : Controller
     public async Task<IActionResult> UserToggleActive(int id, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid) return BadRequest();
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
 
         var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
         if (user is null) return NotFound();
@@ -2618,7 +2429,7 @@ public class HomeController : Controller
 
     public async Task<IActionResult> SystemLogs(CancellationToken cancellationToken = default)
     {
-        if (!HasAccess("Super Admin", "Administrator")) return Forbid();
+        if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
         ViewData[VdTitle] = "System Logs";
 
         var role = HttpContext.Session.GetString(SessionUserRole) ?? string.Empty;
@@ -2720,7 +2531,7 @@ public class HomeController : Controller
     private bool CanManageKpis()
     {
         var role = HttpContext.Session.GetString(SessionUserRole) ?? string.Empty;
-        return role is "Super Admin" or "Administrator" or "Manager";
+        return role is RoleAdmin or RoleAdministrator or RoleManager;
     }
 
     /// <summary>Returns true if the current session role is in the allowed list.</summary>
@@ -2861,10 +2672,6 @@ public class HomeController : Controller
                 g.Count(k => latestDict.TryGetValue(k.Id, out var e) && e.Status == StatusBehind)))
             .ToList();
 
-    private static AlertSeverity ToAlertSeverity(string? severity) =>
-        severity == "Critical" ? AlertSeverity.Critical
-        : severity == "Warning" ? AlertSeverity.Warning
-        : AlertSeverity.Standard;
 
     private static (string Icon, AlertSeverity Severity) FromNotificationType(string type) => type switch
     {

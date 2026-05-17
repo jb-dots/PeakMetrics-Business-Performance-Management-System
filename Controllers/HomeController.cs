@@ -172,6 +172,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveUser(int id, CancellationToken cancellationToken = default)
     {
+        if (!ModelState.IsValid) return BadRequest();
         if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
 
         var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
@@ -220,6 +221,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectUser(int id, CancellationToken cancellationToken = default)
     {
+        if (!ModelState.IsValid) return BadRequest();
         if (!HasAccess(RoleAdmin, RoleAdministrator)) return Forbid();
 
         var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
@@ -1372,6 +1374,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> KpiToggleActive(int id, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid) return BadRequest();
         if (!CanManageKpis()) return RedirectToAction(nameof(Dashboard));
 
         var kpi = await _db.Kpis.FindAsync(new object[] { id }, cancellationToken);
@@ -1655,6 +1658,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> StrategicGoalArchive(int id, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid) return BadRequest();
         if (!HasAccess("Super Admin", "Manager")) return Forbid();
 
         var goal = await _db.StrategicGoals.FindAsync(new object[] { id }, cancellationToken);
@@ -2314,6 +2318,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DepartmentDelete(int id, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid) return BadRequest();
         if (!HasAccess("Super Admin", "Administrator")) return Forbid();
 
         var dept = await _db.Departments
@@ -2346,6 +2351,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DepartmentArchive(int id, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid) return BadRequest();
         if (!HasAccess("Super Admin", "Administrator")) return Forbid();
 
         var dept = await _db.Departments.FindAsync(new object[] { id }, cancellationToken);
@@ -2580,6 +2586,7 @@ public class HomeController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UserToggleActive(int id, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid) return BadRequest();
         if (!HasAccess("Super Admin", "Administrator")) return Forbid();
 
         var user = await _db.Users.FindAsync(new object[] { id }, cancellationToken);
